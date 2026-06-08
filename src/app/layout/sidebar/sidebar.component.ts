@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { AuthService } from '../../core/services/firebase/auth.service';
 import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
 
 @Component({
@@ -24,6 +25,16 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
           </a>
         }
       </nav>
+
+      <div class="sidebar-actions">
+        <button type="button" [disabled]="logoutDisabled()" (click)="logout()">
+          {{ labels.nav.logout }}
+        </button>
+
+        @if (logoutError()) {
+          <p role="alert">{{ logoutError() }}</p>
+        }
+      </div>
     </aside>
   `,
   styles: `
@@ -36,6 +47,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
     .sidebar {
       display: grid;
       gap: 32px;
+      min-height: calc(100dvh - 48px);
       padding: 24px;
       position: sticky;
       top: 0;
@@ -78,6 +90,39 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
       color: var(--accent-strong);
     }
 
+    .sidebar-actions {
+      align-self: end;
+      display: grid;
+      gap: 10px;
+    }
+
+    button {
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent-strong);
+      cursor: pointer;
+      font-weight: 650;
+      min-height: 42px;
+      padding: 0 12px;
+      text-align: start;
+    }
+
+    button:hover {
+      background: var(--surface-muted);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    p {
+      color: #8f2f24;
+      font-size: 0.8rem;
+      margin: 0;
+    }
+
     @media (max-width: 900px) {
       :host {
         min-height: auto;
@@ -85,6 +130,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
 
       .sidebar {
         gap: 18px;
+        min-height: auto;
         position: static;
       }
 
@@ -95,6 +141,26 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
   `
 })
 export class SidebarComponent {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
   protected readonly labels = APP_LABELS;
   protected readonly navItems = APP_NAV_ITEMS;
+  protected readonly loggingOut = signal(false);
+  protected readonly logoutError = signal('');
+  protected readonly logoutDisabled = computed(() => this.loggingOut() || this.authService.loading());
+
+  protected async logout(): Promise<void> {
+    this.logoutError.set('');
+    this.loggingOut.set(true);
+
+    try {
+      await this.authService.logout();
+      await this.router.navigateByUrl('/login');
+    } catch {
+      this.logoutError.set(this.labels.auth.logoutError);
+    } finally {
+      this.loggingOut.set(false);
+    }
+  }
 }

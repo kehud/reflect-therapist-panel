@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 
+import { AuthService } from '../../core/services/firebase/auth.service';
 import { APP_LABELS } from '../../shared/utils/app-labels';
 
 @Component({
@@ -10,7 +11,10 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
         <p>{{ labels.shell.workspace }}</p>
         <h1>{{ labels.appName }}</h1>
       </div>
-      <span>{{ labels.shell.role }}</span>
+      <div class="user-summary" aria-label="Signed in user">
+        <strong>{{ userLabel() }}</strong>
+        <span>{{ roleLabel() }}</span>
+      </div>
     </header>
   `,
   styles: `
@@ -47,7 +51,19 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
       margin: 0;
     }
 
-    span {
+    .user-summary {
+      align-items: flex-end;
+      display: grid;
+      gap: 6px;
+      justify-items: end;
+    }
+
+    strong {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .user-summary span {
       border: 1px solid var(--line);
       border-radius: 999px;
       color: var(--muted);
@@ -63,9 +79,33 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
         gap: 12px;
         padding: 18px 20px;
       }
+
+      .user-summary {
+        align-items: flex-start;
+        justify-items: start;
+      }
     }
   `
 })
 export class TopbarComponent {
+  private readonly authService = inject(AuthService);
+
   protected readonly labels = APP_LABELS;
+  protected readonly userLabel = computed(() => {
+    const appUser = this.authService.currentAppUser();
+    const firebaseUser = this.authService.currentFirebaseUser();
+
+    return (
+      appUser?.displayName ??
+      appUser?.email ??
+      firebaseUser?.displayName ??
+      firebaseUser?.email ??
+      this.labels.shell.signedIn
+    );
+  });
+  protected readonly roleLabel = computed(() => {
+    const role = this.authService.currentAppUser()?.role;
+
+    return role ? this.labels.roles[role] : this.labels.shell.role;
+  });
 }

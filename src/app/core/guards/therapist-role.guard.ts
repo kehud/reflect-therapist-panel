@@ -1,6 +1,13 @@
-import { CanActivateChildFn, CanActivateFn } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
 
-export const therapistRoleGuard: CanActivateFn & CanActivateChildFn = () => {
-  // TODO: Confirm therapist/admin role before allowing panel access.
-  return true;
+import { AuthService } from '../services/firebase/auth.service';
+
+export const therapistRoleGuard: CanActivateFn & CanActivateChildFn = async () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  await authService.waitForSession();
+
+  return authService.isTherapistOrAdmin() ? true : router.createUrlTree(['/login']);
 };

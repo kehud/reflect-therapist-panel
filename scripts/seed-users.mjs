@@ -38,6 +38,12 @@ const users = [
     email: "ehudk011@gmail.com",
     role: "user",
   },
+  {
+    uid: "wDpHD7jBlpWVuSrnW0Vj3rOoFht1",
+    displayName: "Test Patient (90)",
+    email: "ehudk90@gmail.com",
+    role: "user",
+  },
 ];
 
 async function main() {

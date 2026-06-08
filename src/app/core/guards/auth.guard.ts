@@ -1,6 +1,13 @@
-import { CanActivateChildFn, CanActivateFn } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
 
-export const authGuard: CanActivateFn & CanActivateChildFn = () => {
-  // TODO: Check Firebase auth state before allowing protected routes.
-  return true;
+import { AuthService } from '../services/firebase/auth.service';
+
+export const authGuard: CanActivateFn & CanActivateChildFn = async () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  await authService.waitForSession();
+
+  return authService.isAuthenticated() ? true : router.createUrlTree(['/login']);
 };

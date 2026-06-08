@@ -18,9 +18,35 @@ export const APP_LABELS = {
     templatesTitle: 'Reflection templates',
     settingsTitle: 'Settings'
   },
+  auth: {
+    email: 'Email',
+    password: 'Password',
+    emailPlaceholder: 'therapist@example.com',
+    passwordPlaceholder: 'Password',
+    signIn: 'Sign in',
+    signingIn: 'Signing in...',
+    forgotPassword: 'Forgot password?',
+    sendingReset: 'Sending reset...',
+    resetSent: 'Password reset email sent.',
+    missingCredentials: 'Enter email and password.',
+    missingEmail: 'Enter your email first.',
+    invalidEmail: 'Enter a valid email address.',
+    invalidCredentials: 'Email or password is incorrect.',
+    accessDenied: 'This account cannot access the therapist panel.',
+    tooManyRequests: 'Too many attempts. Please try again later.',
+    networkError: 'Network error. Please try again.',
+    genericError: 'Something went wrong. Please try again.',
+    logoutError: 'Could not log out. Please try again.'
+  },
   shell: {
     workspace: 'MVP workspace',
-    role: 'Therapist/Admin'
+    role: 'Therapist/Admin',
+    signedIn: 'Signed in'
+  },
+  roles: {
+    admin: 'Admin',
+    therapist: 'Therapist',
+    user: 'User'
   }
 } as const;
 
