@@ -1,11 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, of, tap } from 'rxjs';
 
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
+import { TherapistNote } from '../../core/models/therapist-note.model';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
+import { TherapistNotesService } from '../../core/services/firebase/therapist-notes.service';
 import { UsersService } from '../../core/services/firebase/users.service';
 import { APP_LABELS } from '../../shared/utils/app-labels';
 
@@ -16,6 +19,7 @@ type HeaderMetric = {
 
 @Component({
   selector: 'app-patient-details-page',
+  imports: [FormsModule],
   template: `
     <section class="page">
       @if (errorMessage()) {
@@ -74,6 +78,51 @@ type HeaderMetric = {
                       <span>{{ entry.journalNote }}</span>
                     </p>
                   }
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="notes" aria-labelledby="therapist-notes">
+          <div class="section-heading">
+            <h3 id="therapist-notes">{{ labels.patientDetails.therapistNotes }}</h3>
+          </div>
+
+          <form class="note-form" (ngSubmit)="saveNote()">
+            <textarea
+              name="therapistNote"
+              rows="4"
+              [placeholder]="labels.patientDetails.notePlaceholder"
+              [disabled]="savingNote()"
+              [ngModel]="noteText()"
+              (ngModelChange)="noteText.set($event)"
+            ></textarea>
+
+            <button type="submit" [disabled]="saveDisabled()">
+              {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
+            </button>
+          </form>
+
+          @if (saveNoteErrorMessage()) {
+            <p class="message error" role="alert">{{ saveNoteErrorMessage() }}</p>
+          }
+
+          @if (notesLoading()) {
+            <p class="message">{{ labels.common.loading }}</p>
+          } @else if (notesErrorMessage()) {
+            <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
+          } @else if (therapistNotes().length === 0) {
+            <p class="message">{{ labels.patientDetails.noTherapistNotes }}</p>
+          } @else {
+            <div class="entries">
+              @for (note of therapistNotes(); track note.id) {
+                <article>
+                  <div class="entry-heading">
+                    <strong>{{ formatDate(note.createdAt) }}</strong>
+                    <span>{{ note.therapistName }}</span>
+                  </div>
+                  <p class="note-text">{{ note.note }}</p>
                 </article>
               }
             </div>
@@ -152,6 +201,7 @@ type HeaderMetric = {
     }
 
     .history,
+    .notes,
     .entries,
     .journal {
       display: grid;
@@ -177,6 +227,45 @@ type HeaderMetric = {
       gap: 6px;
     }
 
+    .note-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    textarea {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      min-height: 112px;
+      padding: 12px 14px;
+      resize: vertical;
+    }
+
+    button {
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      color: var(--surface);
+      cursor: pointer;
+      font-weight: 650;
+      justify-self: start;
+      min-height: 42px;
+      padding: 0 16px;
+    }
+
+    button:disabled,
+    textarea:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    .note-text {
+      color: var(--text);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
     .error {
       color: #8f2f24;
     }
@@ -198,12 +287,18 @@ export class PatientDetailsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
+  private readonly therapistNotesService = inject(TherapistNotesService);
   private readonly patientLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
+  private readonly notesLoaded = signal(false);
 
   protected readonly labels = APP_LABELS;
   protected readonly patientId = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly errorMessage = signal('');
+  protected readonly notesErrorMessage = signal('');
+  protected readonly saveNoteErrorMessage = signal('');
+  protected readonly noteText = signal('');
+  protected readonly savingNote = signal(false);
   protected readonly patient = toSignal(
     this.usersService.getUser(this.patientId).pipe(
       tap(() => this.patientLoaded.set(true)),
@@ -228,7 +323,21 @@ export class PatientDetailsPageComponent {
     ),
     { initialValue: [] }
   );
+  protected readonly therapistNotes = toSignal(
+    this.therapistNotesService.getPatientNotes(this.patientId).pipe(
+      tap(() => this.notesLoaded.set(true)),
+      catchError(() => {
+        this.notesLoaded.set(true);
+        this.notesErrorMessage.set(this.labels.common.firestoreError);
+
+        return of<TherapistNote[]>([]);
+      })
+    ),
+    { initialValue: [] }
+  );
   protected readonly loading = computed(() => !this.patientLoaded() || !this.moodEntriesLoaded());
+  protected readonly notesLoading = computed(() => !this.notesLoaded());
+  protected readonly saveDisabled = computed(() => this.savingNote() || this.noteText().trim().length === 0);
   protected readonly latestEntry = computed(() => this.moodEntries()[0]);
   protected readonly patientName = computed(() => {
     const patient = this.patient();
@@ -282,6 +391,29 @@ export class PatientDetailsPageComponent {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(date);
+  }
+
+  protected async saveNote(): Promise<void> {
+    this.saveNoteErrorMessage.set('');
+
+    if (this.saveDisabled()) {
+      if (!this.noteText().trim()) {
+        this.saveNoteErrorMessage.set(this.labels.patientDetails.emptyNoteError);
+      }
+
+      return;
+    }
+
+    this.savingNote.set(true);
+
+    try {
+      await this.therapistNotesService.createNote(this.patientId, this.noteText());
+      this.noteText.set('');
+    } catch {
+      this.saveNoteErrorMessage.set(this.labels.patientDetails.saveNoteError);
+    } finally {
+      this.savingNote.set(false);
+    }
   }
 
   private toDate(value: unknown): Date | null {

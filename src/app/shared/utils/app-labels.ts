@@ -91,7 +91,14 @@ export const APP_LABELS = {
     journalNote: 'Journal note',
     noPatient: 'Patient not found.',
     noMoodEntries: 'No mood entries found for this patient.',
-    none: 'None'
+    none: 'None',
+    therapistNotes: 'Therapist notes',
+    noTherapistNotes: 'No therapist notes yet.',
+    notePlaceholder: 'Write a private therapist note...',
+    saveNote: 'Save note',
+    savingNote: 'Saving...',
+    emptyNoteError: 'Enter a note before saving.',
+    saveNoteError: 'Could not save note. Please try again.'
   }
 } as const;
 

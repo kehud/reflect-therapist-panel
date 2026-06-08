@@ -19,57 +19,42 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const users = [
+const therapistNotes = [
   {
-    uid: "5s5O2D4J6OX8JUuoM58Wp5Jyj7g2",
-    displayName: "Ehud Admin (89)",
-    email: "ehudk89@gmail.com",
-    role: "admin",
+    patientId: "HA60LPag3LfFvmKdILkGbsXvAaR2",
+    therapistId: "5s5O2D4J6OX8JUuoM58Wp5Jyj7g2",
+    therapistName: "Ehud Admin (89)",
+    note: "Initial therapist note for testing.",
   },
   {
-    uid: "bFfnGdWlMuWMcvT0jecbkk3V8HN2",
-    displayName: "Test Therapist (h)",
-    email: "ehudkakun@hotmail.com",
-    role: "therapist",
-  },
-  {
-    uid: "HA60LPag3LfFvmKdILkGbsXvAaR2",
-    displayName: "Test Patient (11)",
-    email: "ehudk011@gmail.com",
-    role: "user",
-  },
-  {
-    uid: "wDpHD7jBlpWVuSrnW0Vj3rOoFht1",
-    displayName: "Test Patient (90)",
-    email: "ehudk90@gmail.com",
-    role: "user",
+    patientId: "wDpHD7jBlpWVuSrnW0Vj3rOoFht1",
+    therapistId: "bFfnGdWlMuWMcvT0jecbkk3V8HN2",
+    therapistName: "Test Therapist (h)",
+    note: "Patient reports improved mood this week.",
   },
 ];
 
 async function main() {
-  for (const user of users) {
-    if (!user.uid || user.uid.includes("PUT_")) {
-      throw new Error(`Missing UID for ${user.displayName}`);
-    }
-
-    const { uid, ...data } = user;
+  for (const note of therapistNotes) {
+    const noteId = crypto.randomUUID();
 
     await setDoc(
-      doc(db, "users", uid),
+      doc(db, "therapistNotes", noteId),
       {
-        ...data,
+        ...note,
+        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    console.log(`✅ Seeded users/${uid} as ${data.role}`);
+    console.log(`✅ Seeded therapistNotes/${noteId}`);
   }
 
-  console.log("✅ Users seed completed");
+  console.log("✅ Therapist notes seed completed");
 }
 
 main().catch((error) => {
-  console.error("❌ Users seed failed:", error);
+  console.error("❌ Therapist notes seed failed:", error);
   process.exit(1);
 });
