@@ -1,5 +1,9 @@
 export const APP_LABELS = {
   appName: 'Reflect Therapist Panel',
+  common: {
+    loading: 'Loading...',
+    firestoreError: 'Could not load Firebase data.'
+  },
   nav: {
     dashboard: 'Dashboard',
     patients: 'Patients',
@@ -47,6 +51,47 @@ export const APP_LABELS = {
     admin: 'Admin',
     therapist: 'Therapist',
     user: 'User'
+  },
+  dashboard: {
+    overview: 'Overview',
+    totalPatients: 'Total patients',
+    moodEntries: 'Mood entries',
+    activeThisWeek: 'Active this week',
+    latestMood: 'Latest mood',
+    recentMoodEntries: 'Recent mood entries',
+    noMoodEntries: 'No mood entries yet.',
+    noLatestMood: 'No mood recorded',
+    viewPatients: 'View patients',
+    patientsDescription: 'Open the Firestore-backed patient list.',
+    lastRecorded: 'Last recorded'
+  },
+  patients: {
+    subtitle: 'Read-only list of patient users from Firestore.',
+    patient: 'Patient',
+    latestMood: 'Latest mood',
+    lastEntry: 'Last entry',
+    entries: 'Entries',
+    status: 'Status',
+    noPatients: 'No patients found.',
+    noMood: 'No mood recorded',
+    noEntries: 'No entries',
+    activeThisWeek: 'Active this week',
+    inactive: 'No recent mood',
+    unknownPatient: 'Unknown patient'
+  },
+  patientDetails: {
+    email: 'Email',
+    role: 'Role',
+    latestMood: 'Latest mood',
+    lastCheckIn: 'Last check-in',
+    moodHistory: 'Mood history',
+    moodLevel: 'Mood level',
+    emotions: 'Emotions',
+    influences: 'Influences',
+    journalNote: 'Journal note',
+    noPatient: 'Patient not found.',
+    noMoodEntries: 'No mood entries found for this patient.',
+    none: 'None'
   }
 } as const;
 

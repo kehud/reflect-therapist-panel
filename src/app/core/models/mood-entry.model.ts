@@ -1,7 +1,9 @@
 export interface MoodEntry {
   id: string;
   userId: string;
-  mood?: number | string;
-  note?: string;
+  moodLevel?: number;
+  emotions: string[];
+  influences: string[];
+  journalNote?: string;
   createdAt?: unknown;
 }
