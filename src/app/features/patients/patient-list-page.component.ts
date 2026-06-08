@@ -5,6 +5,7 @@ import { catchError, of, tap } from 'rxjs';
 
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
+import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { UsersService } from '../../core/services/firebase/users.service';
 import { APP_LABELS } from '../../shared/utils/app-labels';
@@ -138,6 +139,7 @@ type PatientRow = {
 export class PatientListPageComponent {
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
+  private readonly attentionService = inject(AttentionService);
   private readonly patientsLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
 
@@ -174,6 +176,7 @@ export class PatientListPageComponent {
     return this.patients().map((patient) => {
       const entries = entriesByUser.get(patient.id) ?? [];
       const latestEntry = entries[0];
+      const attention = this.attentionService.calculatePatientAttention(entries);
 
       return {
         id: patient.id,
@@ -182,9 +185,7 @@ export class PatientListPageComponent {
         latestMood: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels.patients.noMood,
         lastEntry: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels.patients.noEntries,
         entryCount: String(entries.length),
-        status: latestEntry && this.isWithinLastDays(latestEntry.createdAt, 7)
-          ? this.labels.patients.activeThisWeek
-          : this.labels.patients.inactive
+        status: this.formatAttentionLevel(attention.level)
       };
     });
   });
@@ -214,6 +215,10 @@ export class PatientListPageComponent {
     return String(moodLevel);
   }
 
+  private formatAttentionLevel(level: AttentionLevel): string {
+    return this.labels.attention[level];
+  }
+
   private formatDate(value: unknown): string {
     const date = this.toDate(value);
 
@@ -225,16 +230,6 @@ export class PatientListPageComponent {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(date);
-  }
-
-  private isWithinLastDays(value: unknown, days: number): boolean {
-    const date = this.toDate(value);
-
-    if (!date) {
-      return false;
-    }
-
-    return date.getTime() >= Date.now() - days * 24 * 60 * 60 * 1000;
   }
 
   private toDate(value: unknown): Date | null {

@@ -5,6 +5,7 @@ import { catchError, of, tap } from 'rxjs';
 
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
+import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { UsersService } from '../../core/services/firebase/users.service';
 import { APP_LABELS } from '../../shared/utils/app-labels';
@@ -21,6 +22,14 @@ type RecentMoodEntry = {
   patientName: string;
   mood: string;
   createdAt: string;
+};
+
+type AttentionPatient = {
+  patientId: string;
+  patientName: string;
+  level: AttentionLevel;
+  reasons: string[];
+  needsAttention: boolean;
 };
 
 @Component({
@@ -50,6 +59,31 @@ type RecentMoodEntry = {
           </article>
         }
       </div>
+
+      <section class="recent" aria-labelledby="attention-list">
+        <div class="section-heading">
+          <h3 id="attention-list">{{ labels.dashboard.attentionList }}</h3>
+          <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
+        </div>
+
+        @if (!loading()) {
+          @if (attentionList().length === 0) {
+            <p class="message">{{ labels.dashboard.noAttention }}</p>
+          } @else {
+            <div class="recent-list">
+              @for (item of attentionList(); track item.patientId) {
+                <a class="recent-row" [routerLink]="['/patients', item.patientId]">
+                  <span>
+                    <strong>{{ item.patientName }}</strong>
+                    <small>{{ item.reasons.join(' ') }}</small>
+                  </span>
+                  <span>{{ formatAttentionLevel(item.level) }}</span>
+                </a>
+              }
+            </div>
+          }
+        }
+      </section>
 
       <section class="recent" aria-labelledby="recent-mood-entries">
         <div class="section-heading">
@@ -218,6 +252,7 @@ type RecentMoodEntry = {
 export class DashboardPageComponent {
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
+  private readonly attentionService = inject(AttentionService);
   private readonly patientsLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
 
@@ -256,9 +291,6 @@ export class DashboardPageComponent {
   protected readonly metrics = computed<DashboardMetric[]>(() => {
     const patients = this.patients();
     const entries = this.patientMoodEntries();
-    const activeThisWeek = new Set(
-      entries.filter((entry) => this.isWithinLastDays(entry.createdAt, 7)).map((entry) => entry.userId)
-    ).size;
     const latestEntry = entries[0];
 
     return [
@@ -273,9 +305,9 @@ export class DashboardPageComponent {
         description: this.labels.dashboard.recentMoodEntries
       },
       {
-        label: this.labels.dashboard.activeThisWeek,
-        value: String(activeThisWeek),
-        description: this.labels.patients.activeThisWeek
+        label: this.labels.dashboard.needsAttention,
+        value: String(this.attentionList().length),
+        description: this.labels.dashboard.attentionDescription
       },
       {
         label: this.labels.dashboard.latestMood,
@@ -285,6 +317,32 @@ export class DashboardPageComponent {
           : this.labels.dashboard.noMoodEntries
       }
     ];
+  });
+  protected readonly attentionList = computed<AttentionPatient[]>(() => {
+    const entriesByUser = this.getEntriesByUser(this.patientMoodEntries());
+
+    return this.patients()
+      .map((patient) => {
+        const attention = this.attentionService.calculatePatientAttention(entriesByUser.get(patient.id) ?? []);
+
+        return {
+          patientId: patient.id,
+          patientName: this.getPatientName(patient),
+          level: attention.level,
+          reasons: attention.reasons,
+          needsAttention: attention.needsAttention
+        };
+      })
+      .filter((item) => item.needsAttention)
+      .sort((first, second) => {
+        const levelOrder: Record<AttentionLevel, number> = {
+          high: 0,
+          medium: 1,
+          none: 2
+        };
+
+        return levelOrder[first.level] - levelOrder[second.level] || first.patientName.localeCompare(second.patientName);
+      });
   });
   protected readonly recentEntries = computed<RecentMoodEntry[]>(() => {
     const patientsById = new Map(this.patients().map((patient) => [patient.id, patient]));
@@ -316,6 +374,23 @@ export class DashboardPageComponent {
     return String(moodLevel);
   }
 
+  protected formatAttentionLevel(level: AttentionLevel): string {
+    return this.labels.attention[level];
+  }
+
+  private getEntriesByUser(entries: MoodEntry[]): Map<string, MoodEntry[]> {
+    const entriesByUser = new Map<string, MoodEntry[]>();
+
+    entries.forEach((entry) => {
+      const existing = entriesByUser.get(entry.userId) ?? [];
+
+      existing.push(entry);
+      entriesByUser.set(entry.userId, existing);
+    });
+
+    return entriesByUser;
+  }
+
   private formatDate(value: unknown): string {
     const date = this.toDate(value);
 
@@ -327,16 +402,6 @@ export class DashboardPageComponent {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(date);
-  }
-
-  private isWithinLastDays(value: unknown, days: number): boolean {
-    const date = this.toDate(value);
-
-    if (!date) {
-      return false;
-    }
-
-    return date.getTime() >= Date.now() - days * 24 * 60 * 60 * 1000;
   }
 
   private toDate(value: unknown): Date | null {

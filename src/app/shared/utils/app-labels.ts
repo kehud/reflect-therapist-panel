@@ -56,7 +56,10 @@ export const APP_LABELS = {
     overview: 'Overview',
     totalPatients: 'Total patients',
     moodEntries: 'Mood entries',
-    activeThisWeek: 'Active this week',
+    needsAttention: 'Patients requiring attention',
+    attentionDescription: 'Patients with high or medium attention level.',
+    attentionList: 'Needs attention',
+    noAttention: 'No patients need attention right now.',
     latestMood: 'Latest mood',
     recentMoodEntries: 'Recent mood entries',
     noMoodEntries: 'No mood entries yet.',
@@ -75,9 +78,16 @@ export const APP_LABELS = {
     noPatients: 'No patients found.',
     noMood: 'No mood recorded',
     noEntries: 'No entries',
-    activeThisWeek: 'Active this week',
-    inactive: 'No recent mood',
     unknownPatient: 'Unknown patient'
+  },
+  attention: {
+    title: 'Needs attention',
+    level: 'Level',
+    reasons: 'Reasons',
+    none: 'NONE',
+    medium: 'MEDIUM',
+    high: 'HIGH',
+    noReasons: 'No attention reasons.'
   },
   patientDetails: {
     email: 'Email',
@@ -99,6 +109,19 @@ export const APP_LABELS = {
     savingNote: 'Saving...',
     emptyNoteError: 'Enter a note before saving.',
     saveNoteError: 'Could not save note. Please try again.'
+  },
+  templates: {
+    subtitle: 'Read-only active reflection templates from Firestore.',
+    totalTemplates: 'Total templates',
+    activeTemplates: 'Active templates',
+    search: 'Search templates',
+    searchPlaceholder: 'Search title, body, or type',
+    type: 'Type',
+    minCheckins: 'Minimum check-ins',
+    noTemplates: 'No active templates found.',
+    noSearchResults: 'No templates match your search.',
+    untitled: 'Untitled template',
+    noBody: 'No body text.'
   }
 } as const;
 

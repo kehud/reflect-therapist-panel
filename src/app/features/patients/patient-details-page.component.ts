@@ -7,6 +7,7 @@ import { catchError, of, tap } from 'rxjs';
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
 import { TherapistNote } from '../../core/models/therapist-note.model';
+import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { TherapistNotesService } from '../../core/services/firebase/therapist-notes.service';
 import { UsersService } from '../../core/services/firebase/users.service';
@@ -46,6 +47,23 @@ type HeaderMetric = {
             }
           </dl>
         </header>
+
+        <section class="attention-card" aria-labelledby="attention-summary">
+          <div class="section-heading">
+            <h3 id="attention-summary">{{ labels.attention.title }}</h3>
+            <span>{{ formatAttentionLevel(attentionSummary().level) }}</span>
+          </div>
+
+          @if (attentionSummary().reasons.length === 0) {
+            <p class="message">{{ labels.attention.noReasons }}</p>
+          } @else {
+            <ul>
+              @for (reason of attentionSummary().reasons; track reason) {
+                <li>{{ reason }}</li>
+              }
+            </ul>
+          }
+        </section>
 
         <section class="history" aria-labelledby="mood-history">
           <h3 id="mood-history">{{ labels.patientDetails.moodHistory }}</h3>
@@ -172,6 +190,7 @@ type HeaderMetric = {
     }
 
     .patient-header,
+    .attention-card,
     article {
       background: var(--surface);
       border: 1px solid var(--line);
@@ -202,6 +221,7 @@ type HeaderMetric = {
 
     .history,
     .notes,
+    .attention-card,
     .entries,
     .journal {
       display: grid;
@@ -219,8 +239,30 @@ type HeaderMetric = {
       font-weight: 650;
     }
 
+    .section-heading {
+      align-items: center;
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+    }
+
+    .section-heading span {
+      color: var(--accent-strong);
+      font-weight: 700;
+    }
+
     .entry-details {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    ul {
+      color: var(--muted);
+      margin: 0;
+      padding-inline-start: 20px;
+    }
+
+    li + li {
+      margin-top: 6px;
     }
 
     .journal {
@@ -280,6 +322,11 @@ type HeaderMetric = {
         align-items: flex-start;
         flex-direction: column;
       }
+
+      .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+      }
     }
   `
 })
@@ -288,6 +335,7 @@ export class PatientDetailsPageComponent {
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
   private readonly therapistNotesService = inject(TherapistNotesService);
+  private readonly attentionService = inject(AttentionService);
   private readonly patientLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
   private readonly notesLoaded = signal(false);
@@ -339,6 +387,9 @@ export class PatientDetailsPageComponent {
   protected readonly notesLoading = computed(() => !this.notesLoaded());
   protected readonly saveDisabled = computed(() => this.savingNote() || this.noteText().trim().length === 0);
   protected readonly latestEntry = computed(() => this.moodEntries()[0]);
+  protected readonly attentionSummary = computed(() => {
+    return this.attentionService.calculatePatientAttention(this.moodEntries());
+  });
   protected readonly patientName = computed(() => {
     const patient = this.patient();
 
@@ -378,6 +429,10 @@ export class PatientDetailsPageComponent {
 
   protected formatList(items: string[]): string {
     return items.length > 0 ? items.join(', ') : this.labels.patientDetails.none;
+  }
+
+  protected formatAttentionLevel(level: AttentionLevel): string {
+    return this.labels.attention[level];
   }
 
   protected formatDate(value: unknown): string {
