@@ -43,7 +43,8 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
   styles: `
     :host {
       border-inline-end: 1px solid var(--line);
-      background: color-mix(in srgb, var(--surface) 88%, var(--app-bg));
+      background: color-mix(in srgb, var(--surface-muted) 72%, var(--app-bg));
+      box-shadow: inset -1px 0 0 color-mix(in srgb, var(--line-strong) 42%, transparent);
       min-height: 100dvh;
     }
 
@@ -118,10 +119,10 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
     }
 
     .nav a.is-active {
-      background: var(--accent-soft);
-      border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+      background: var(--selected);
+      border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
       color: var(--accent-strong);
-      box-shadow: inset 3px 0 0 var(--accent);
+      box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 88%, var(--line));
     }
 
     .sidebar-actions {

@@ -181,8 +181,8 @@ type AttentionPatient = {
     }
 
     .metric-card strong {
-      font-size: 1.9rem;
-      font-weight: 730;
+      font-size: 2rem;
+      font-weight: 760;
       letter-spacing: 0;
       line-height: 1.05;
     }
@@ -275,11 +275,12 @@ type AttentionPatient = {
 
     .status-pill,
     .mood-chip {
-      border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+      border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
       border-radius: 999px;
       background: var(--accent-soft);
       color: var(--accent-strong);
       font-size: 0.8rem;
+      font-weight: 720;
       padding: 6px 10px;
       white-space: nowrap;
     }
