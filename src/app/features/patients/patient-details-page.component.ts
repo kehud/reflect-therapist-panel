@@ -473,7 +473,7 @@ type MoodTrendPoint = {
       background: var(--accent);
       border: 0;
       border-radius: var(--radius-sm);
-      color: #ffffff;
+      color: var(--surface);
       cursor: pointer;
       font-weight: 650;
       justify-self: start;

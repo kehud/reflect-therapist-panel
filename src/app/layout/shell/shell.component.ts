@@ -27,8 +27,9 @@ import { TopbarComponent } from '../topbar/topbar.component';
 
     .shell {
       background:
-        radial-gradient(circle at top left, color-mix(in srgb, var(--accent-soft) 78%, transparent) 0 260px, transparent 380px),
-        var(--app-bg);
+        radial-gradient(circle at top left, var(--glow-accent) 0 230px, transparent 390px),
+        radial-gradient(circle at 86% 8%, color-mix(in srgb, var(--glow-accent) 58%, transparent) 0 180px, transparent 340px),
+        var(--app-bg-gradient);
       display: grid;
       grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100dvh;

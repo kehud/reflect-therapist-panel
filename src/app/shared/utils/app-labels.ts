@@ -126,6 +126,14 @@ export const APP_LABELS = {
     noSearchResults: 'No templates match your search.',
     untitled: 'Untitled template',
     noBody: 'No body text.'
+  },
+  settings: {
+    panelSettings: 'Panel settings',
+    panelDescription: 'Language, RTL, and admin controls will be added in later phases.',
+    theme: 'Theme',
+    themeDescription: 'Choose how the therapist panel appears on this device.',
+    light: 'Light',
+    dark: 'Dark'
   }
 } as const;
 

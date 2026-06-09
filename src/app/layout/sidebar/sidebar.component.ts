@@ -43,7 +43,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
   styles: `
     :host {
       border-inline-end: 1px solid var(--line);
-      background: color-mix(in srgb, var(--surface-muted) 72%, var(--app-bg));
+      background: var(--sidebar-bg);
       box-shadow: inset -1px 0 0 color-mix(in srgb, var(--line-strong) 42%, transparent);
       min-height: 100dvh;
     }
@@ -72,7 +72,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
       background: linear-gradient(135deg, var(--accent-strong), var(--accent));
       border-radius: var(--radius-sm);
       box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 12%, transparent);
-      color: #ffffff;
+      color: var(--surface);
       display: inline-flex;
       height: 34px;
       justify-content: center;
@@ -120,7 +120,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
 
     .nav a.is-active {
       background: var(--selected);
-      border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+      border-color: var(--selected-border);
       color: var(--accent-strong);
       box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 88%, var(--line));
     }
