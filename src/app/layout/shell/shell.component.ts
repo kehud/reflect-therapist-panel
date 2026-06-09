@@ -26,8 +26,11 @@ import { TopbarComponent } from '../topbar/topbar.component';
     }
 
     .shell {
+      background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--accent-soft) 78%, transparent) 0 260px, transparent 380px),
+        var(--app-bg);
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100dvh;
     }
 
@@ -38,7 +41,10 @@ import { TopbarComponent } from '../topbar/topbar.component';
     }
 
     .content {
-      padding: 28px;
+      margin-inline: auto;
+      max-width: none;
+      padding: 24px 28px 40px;
+      width: 100%;
     }
 
     @media (max-width: 900px) {
@@ -47,7 +53,13 @@ import { TopbarComponent } from '../topbar/topbar.component';
       }
 
       .content {
-        padding: 20px;
+        padding: 24px 20px 36px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .content {
+        padding-inline: 16px;
       }
     }
   `

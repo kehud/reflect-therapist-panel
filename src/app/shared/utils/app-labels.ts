@@ -2,7 +2,8 @@ export const APP_LABELS = {
   appName: 'Reflect Therapist Panel',
   common: {
     loading: 'Loading...',
-    firestoreError: 'Could not load Firebase data.'
+    firestoreError: 'Could not load Firebase data.',
+    loadMore: 'Load more'
   },
   nav: {
     dashboard: 'Dashboard',
@@ -94,6 +95,9 @@ export const APP_LABELS = {
     role: 'Role',
     latestMood: 'Latest mood',
     lastCheckIn: 'Last check-in',
+    moodTrend: 'Mood trend',
+    lastTenMoodEntries: 'Last 10 entries',
+    noMoodTrend: 'No mood trend yet.',
     moodHistory: 'Mood history',
     moodLevel: 'Mood level',
     emotions: 'Emotions',

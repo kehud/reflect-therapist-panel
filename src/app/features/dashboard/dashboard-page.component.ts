@@ -52,7 +52,7 @@ type AttentionPatient = {
 
       <div class="metrics" aria-label="Dashboard metrics">
         @for (metric of metrics(); track metric.label) {
-          <article>
+          <article class="metric-card">
             <span>{{ metric.label }}</span>
             <strong>{{ metric.value }}</strong>
             <p>{{ metric.description }}</p>
@@ -60,116 +60,148 @@ type AttentionPatient = {
         }
       </div>
 
-      <section class="recent" aria-labelledby="attention-list">
-        <div class="section-heading">
-          <h3 id="attention-list">{{ labels.dashboard.attentionList }}</h3>
-          <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
-        </div>
+      <div class="dashboard-grid">
+        <section class="recent" aria-labelledby="attention-list">
+          <div class="section-heading">
+            <h3 id="attention-list">{{ labels.dashboard.attentionList }}</h3>
+            <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
+          </div>
 
-        @if (!loading()) {
-          @if (attentionList().length === 0) {
-            <p class="message">{{ labels.dashboard.noAttention }}</p>
-          } @else {
-            <div class="recent-list">
-              @for (item of attentionList(); track item.patientId) {
-                <a class="recent-row" [routerLink]="['/patients', item.patientId]">
-                  <span>
-                    <strong>{{ item.patientName }}</strong>
-                    <small>{{ item.reasons.join(' ') }}</small>
-                  </span>
-                  <span>{{ formatAttentionLevel(item.level) }}</span>
-                </a>
-              }
-            </div>
+          @if (!loading()) {
+            @if (attentionList().length === 0) {
+              <p class="attention-empty" role="status">✓ No patients currently require attention.</p>
+            } @else {
+              <div class="recent-list">
+                @for (item of attentionList(); track item.patientId) {
+                  <a class="recent-row" [routerLink]="['/patients', item.patientId]">
+                    <span>
+                      <strong>{{ item.patientName }}</strong>
+                      <small>{{ item.reasons.join(' ') }}</small>
+                    </span>
+                    <span class="status-pill" [class.is-high]="item.level === 'high'" [class.is-medium]="item.level === 'medium'">
+                      {{ formatAttentionLevel(item.level) }}
+                    </span>
+                  </a>
+                }
+              </div>
+            }
           }
-        }
-      </section>
+        </section>
 
-      <section class="recent" aria-labelledby="recent-mood-entries">
-        <div class="section-heading">
-          <h3 id="recent-mood-entries">{{ labels.dashboard.recentMoodEntries }}</h3>
-          <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
-        </div>
+        <section class="recent" aria-labelledby="recent-mood-entries">
+          <div class="section-heading">
+            <h3 id="recent-mood-entries">{{ labels.dashboard.recentMoodEntries }}</h3>
+            <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
+          </div>
 
-        @if (!loading()) {
-          @if (recentEntries().length === 0) {
-            <p class="message">{{ labels.dashboard.noMoodEntries }}</p>
-          } @else {
-            <div class="recent-list">
-              @for (entry of recentEntries(); track entry.id) {
-                <a class="recent-row" [routerLink]="['/patients', entry.userId]">
-                  <span>
-                    <strong>{{ entry.patientName }}</strong>
-                    <small>{{ entry.createdAt }}</small>
-                  </span>
-                  <span>{{ entry.mood }}</span>
-                </a>
-              }
-            </div>
+          @if (!loading()) {
+            @if (recentEntries().length === 0) {
+              <p class="message">{{ labels.dashboard.noMoodEntries }}</p>
+            } @else {
+              <div class="recent-list">
+                @for (entry of recentEntries(); track entry.id) {
+                  <a class="recent-row" [routerLink]="['/patients', entry.userId]">
+                    <span>
+                      <strong>{{ entry.patientName }}</strong>
+                      <small>{{ entry.createdAt }}</small>
+                    </span>
+                    <span class="mood-chip">{{ entry.mood }}</span>
+                  </a>
+                }
+              </div>
+            }
           }
-        }
-      </section>
+        </section>
+      </div>
     </section>
   `,
   styles: `
     .page {
       display: grid;
-      gap: 24px;
+      gap: 26px;
     }
 
     .heading p,
-    article span,
-    article p,
+    .metric-card span,
+    .metric-card p,
     .message,
     small {
       color: var(--muted);
     }
 
+    .heading {
+      display: grid;
+      gap: 4px;
+    }
+
     .heading p {
-      margin: 0 0 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin: 0;
+      text-transform: uppercase;
     }
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.95rem;
+      font-weight: 720;
       letter-spacing: 0;
       margin: 0;
     }
 
     h3 {
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 720;
       letter-spacing: 0;
       margin: 0;
     }
 
     .metrics {
       display: grid;
-      gap: 16px;
+      gap: 14px;
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    article {
+    .metric-card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       display: grid;
       gap: 8px;
-      padding: 20px;
+      min-height: 126px;
+      padding: 16px;
     }
 
-    article span {
-      font-size: 0.875rem;
+    .metric-card span {
+      font-size: 0.78rem;
       font-weight: 650;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
     }
 
-    article strong {
-      font-size: 2rem;
-      font-weight: 700;
+    .metric-card strong {
+      font-size: 1.9rem;
+      font-weight: 730;
       letter-spacing: 0;
+      line-height: 1.05;
     }
 
-    article p,
+    .metric-card p,
     .message {
       margin: 0;
+    }
+
+    .metric-card p,
+    small {
+      line-height: 1.45;
+    }
+
+    .message {
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
     }
 
     .section-heading,
@@ -182,23 +214,44 @@ type AttentionPatient = {
 
     .section-heading a {
       color: var(--accent-strong);
+      font-size: 0.9rem;
       font-weight: 650;
     }
 
     .recent {
+      align-content: start;
       display: grid;
       gap: 14px;
+      min-width: 0;
+    }
+
+    .dashboard-grid {
+      align-items: stretch;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .attention-empty {
+      align-self: start;
+      color: var(--attention-normal);
+      font-size: 0.92rem;
+      font-weight: 650;
+      margin: 0;
+      padding: 2px 0;
     }
 
     .recent-list {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       overflow: hidden;
     }
 
     .recent-row {
-      padding: 16px 18px;
+      min-height: 68px;
+      padding: 15px 18px;
     }
 
     .recent-row + .recent-row {
@@ -206,27 +259,62 @@ type AttentionPatient = {
     }
 
     .recent-row:hover {
-      background: var(--surface-muted);
+      background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
     }
 
     .recent-row span:first-child {
       display: grid;
       gap: 4px;
+      min-width: 0;
     }
 
     .recent-row > span:last-child {
-      color: var(--accent-strong);
       font-weight: 700;
       text-align: end;
     }
 
+    .status-pill,
+    .mood-chip {
+      border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      background: var(--attention-normal-soft);
+      border-color: color-mix(in srgb, var(--attention-normal) 24%, var(--line));
+      color: var(--attention-normal);
+    }
+
+    .status-pill.is-high {
+      background: var(--attention-high-soft);
+      border-color: color-mix(in srgb, var(--attention-high) 28%, var(--line));
+      color: var(--attention-high);
+    }
+
+    .status-pill.is-medium {
+      background: var(--attention-medium-soft);
+      border-color: color-mix(in srgb, var(--attention-medium) 26%, var(--line));
+      color: var(--attention-medium);
+    }
+
     .error {
-      color: #8f2f24;
+      background: var(--error-soft);
+      border-color: color-mix(in srgb, var(--error) 24%, var(--line));
+      color: var(--error);
     }
 
     @media (max-width: 1080px) {
       .metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
       }
     }
 

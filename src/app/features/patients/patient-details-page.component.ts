@@ -18,6 +18,13 @@ type HeaderMetric = {
   value: string;
 };
 
+type MoodTrendPoint = {
+  x: number;
+  y: number;
+  mood: string;
+  label: string;
+};
+
 @Component({
   selector: 'app-patient-details-page',
   imports: [FormsModule],
@@ -33,25 +40,61 @@ type HeaderMetric = {
         <p class="message">{{ labels.patientDetails.noPatient }}</p>
       } @else {
         <header class="patient-header">
-          <div>
+          <div class="patient-title">
             <p class="eyebrow">{{ labels.pages.patientDetailsTitle }}</p>
             <h2>{{ patientName() }}</h2>
           </div>
 
-          <dl class="header-grid">
-            @for (metric of headerMetrics(); track metric.label) {
-              <div>
-                <dt>{{ metric.label }}</dt>
-                <dd>{{ metric.value }}</dd>
+          <div class="patient-summary-grid">
+            <dl class="header-grid">
+              @for (metric of headerMetrics(); track metric.label) {
+                <div class="header-metric">
+                  <dt>{{ metric.label }}</dt>
+                  <dd>{{ metric.value }}</dd>
+                </div>
+              }
+            </dl>
+
+            <section class="mood-trend" aria-labelledby="mood-trend-title">
+              <div class="trend-heading">
+                <div>
+                  <h3 id="mood-trend-title">{{ labels.patientDetails.moodTrend }}</h3>
+                  <p>{{ labels.patientDetails.lastTenMoodEntries }}</p>
+                </div>
+                @if (latestEntry()) {
+                  <strong>{{ formatMood(latestEntry()?.moodLevel) }}</strong>
+                }
               </div>
-            }
-          </dl>
+
+              @if (moodTrendPoints().length === 0) {
+                <p class="message compact">{{ labels.patientDetails.noMoodTrend }}</p>
+              } @else {
+                <svg class="trend-chart" viewBox="0 0 280 92" role="img" [attr.aria-label]="labels.patientDetails.moodTrend">
+                  <line class="trend-grid-line" x1="12" y1="16" x2="268" y2="16" />
+                  <line class="trend-grid-line" x1="12" y1="46" x2="268" y2="46" />
+                  <line class="trend-grid-line" x1="12" y1="76" x2="268" y2="76" />
+                  <polyline class="trend-line" [attr.points]="moodTrendLine()" />
+                  @for (point of moodTrendPoints(); track point.label + point.x) {
+                    <circle class="trend-point" [attr.cx]="point.x" [attr.cy]="point.y" r="3.2">
+                      <title>{{ point.label }}: {{ point.mood }}</title>
+                    </circle>
+                  }
+                </svg>
+              }
+            </section>
+          </div>
         </header>
 
         <section class="attention-card" aria-labelledby="attention-summary">
           <div class="section-heading">
             <h3 id="attention-summary">{{ labels.attention.title }}</h3>
-            <span>{{ formatAttentionLevel(attentionSummary().level) }}</span>
+            <span
+              class="status-pill"
+              [class.is-high]="attentionSummary().level === 'high'"
+              [class.is-medium]="attentionSummary().level === 'medium'"
+            >
+              {{ formatAttentionLevel(attentionSummary().level) }}
+            </span>
           </div>
 
           @if (attentionSummary().reasons.length === 0) {
@@ -65,94 +108,104 @@ type HeaderMetric = {
           }
         </section>
 
-        <section class="history" aria-labelledby="mood-history">
-          <h3 id="mood-history">{{ labels.patientDetails.moodHistory }}</h3>
+        <div class="detail-grid">
+          <section class="history" aria-labelledby="mood-history">
+            <h3 id="mood-history">{{ labels.patientDetails.moodHistory }}</h3>
 
-          @if (moodEntries().length === 0) {
-            <p class="message">{{ labels.patientDetails.noMoodEntries }}</p>
-          } @else {
-            <div class="entries">
-              @for (entry of moodEntries(); track entry.id) {
-                <article>
-                  <div class="entry-heading">
-                    <strong>{{ formatDate(entry.createdAt) }}</strong>
-                    <span>{{ labels.patientDetails.moodLevel }}: {{ formatMood(entry.moodLevel) }}</span>
-                  </div>
-
-                  <dl class="entry-details">
-                    <div>
-                      <dt>{{ labels.patientDetails.emotions }}</dt>
-                      <dd>{{ formatList(entry.emotions) }}</dd>
+            @if (moodEntries().length === 0) {
+              <p class="message">{{ labels.patientDetails.noMoodEntries }}</p>
+            } @else {
+              <div class="entries">
+                @for (entry of visibleMoodEntries(); track entry.id) {
+                  <article class="entry-card">
+                    <div class="entry-heading">
+                      <strong>{{ formatDate(entry.createdAt) }}</strong>
+                      <span class="mood-chip">{{ labels.patientDetails.moodLevel }}: {{ formatMood(entry.moodLevel) }}</span>
                     </div>
-                    <div>
-                      <dt>{{ labels.patientDetails.influences }}</dt>
-                      <dd>{{ formatList(entry.influences) }}</dd>
+
+                    <dl class="entry-details">
+                      <div>
+                        <dt>{{ labels.patientDetails.emotions }}</dt>
+                        <dd>{{ formatList(entry.emotions) }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ labels.patientDetails.influences }}</dt>
+                        <dd>{{ formatList(entry.influences) }}</dd>
+                      </div>
+                    </dl>
+
+                    @if (entry.journalNote) {
+                      <p class="journal">
+                        <strong>{{ labels.patientDetails.journalNote }}</strong>
+                        <span>{{ entry.journalNote }}</span>
+                      </p>
+                    }
+                  </article>
+                }
+              </div>
+
+              @if (canLoadMoreMoodEntries()) {
+                <button class="load-more" type="button" (click)="loadMoreMoodEntries()">{{ labels.common.loadMore }}</button>
+              }
+            }
+          </section>
+
+          <section class="notes" aria-labelledby="therapist-notes">
+            <div class="section-heading">
+              <h3 id="therapist-notes">{{ labels.patientDetails.therapistNotes }}</h3>
+            </div>
+
+            <form class="note-form" (ngSubmit)="saveNote()">
+              <textarea
+                name="therapistNote"
+                rows="4"
+                [placeholder]="labels.patientDetails.notePlaceholder"
+                [disabled]="savingNote()"
+                [ngModel]="noteText()"
+                (ngModelChange)="noteText.set($event)"
+              ></textarea>
+
+              <button type="submit" [disabled]="saveDisabled()">
+                {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
+              </button>
+            </form>
+
+            @if (saveNoteErrorMessage()) {
+              <p class="message error" role="alert">{{ saveNoteErrorMessage() }}</p>
+            }
+
+            @if (notesLoading()) {
+              <p class="message">{{ labels.common.loading }}</p>
+            } @else if (notesErrorMessage()) {
+              <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
+            } @else if (therapistNotes().length === 0) {
+              <p class="message">{{ labels.patientDetails.noTherapistNotes }}</p>
+            } @else {
+              <div class="entries">
+                @for (note of visibleTherapistNotes(); track note.id) {
+                  <article class="entry-card note-card">
+                    <div class="entry-heading">
+                      <strong>{{ formatDate(note.createdAt) }}</strong>
+                      <span>{{ note.therapistName }}</span>
                     </div>
-                  </dl>
+                    <p class="note-text">{{ note.note }}</p>
+                  </article>
+                }
+              </div>
 
-                  @if (entry.journalNote) {
-                    <p class="journal">
-                      <strong>{{ labels.patientDetails.journalNote }}</strong>
-                      <span>{{ entry.journalNote }}</span>
-                    </p>
-                  }
-                </article>
+              @if (canLoadMoreTherapistNotes()) {
+                <button class="load-more" type="button" (click)="loadMoreTherapistNotes()">{{ labels.common.loadMore }}</button>
               }
-            </div>
-          }
-        </section>
-
-        <section class="notes" aria-labelledby="therapist-notes">
-          <div class="section-heading">
-            <h3 id="therapist-notes">{{ labels.patientDetails.therapistNotes }}</h3>
-          </div>
-
-          <form class="note-form" (ngSubmit)="saveNote()">
-            <textarea
-              name="therapistNote"
-              rows="4"
-              [placeholder]="labels.patientDetails.notePlaceholder"
-              [disabled]="savingNote()"
-              [ngModel]="noteText()"
-              (ngModelChange)="noteText.set($event)"
-            ></textarea>
-
-            <button type="submit" [disabled]="saveDisabled()">
-              {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
-            </button>
-          </form>
-
-          @if (saveNoteErrorMessage()) {
-            <p class="message error" role="alert">{{ saveNoteErrorMessage() }}</p>
-          }
-
-          @if (notesLoading()) {
-            <p class="message">{{ labels.common.loading }}</p>
-          } @else if (notesErrorMessage()) {
-            <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
-          } @else if (therapistNotes().length === 0) {
-            <p class="message">{{ labels.patientDetails.noTherapistNotes }}</p>
-          } @else {
-            <div class="entries">
-              @for (note of therapistNotes(); track note.id) {
-                <article>
-                  <div class="entry-heading">
-                    <strong>{{ formatDate(note.createdAt) }}</strong>
-                    <span>{{ note.therapistName }}</span>
-                  </div>
-                  <p class="note-text">{{ note.note }}</p>
-                </article>
-              }
-            </div>
-          }
-        </section>
+            }
+          </section>
+        </div>
       }
     </section>
   `,
   styles: `
     .page {
       display: grid;
-      gap: 24px;
+      gap: 18px;
     }
 
     h2,
@@ -164,13 +217,15 @@ type HeaderMetric = {
     }
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.95rem;
+      font-weight: 730;
       letter-spacing: 0;
       margin-top: 4px;
     }
 
     h3 {
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 720;
       letter-spacing: 0;
     }
 
@@ -191,13 +246,33 @@ type HeaderMetric = {
 
     .patient-header,
     .attention-card,
-    article {
+    .entry-card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       display: grid;
       gap: 18px;
       padding: 20px;
+    }
+
+    .patient-header {
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 62%, transparent), transparent 72%),
+        var(--surface);
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .patient-title {
+      min-width: 0;
+    }
+
+    .patient-summary-grid {
+      align-items: stretch;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
     }
 
     .header-grid,
@@ -205,6 +280,69 @@ type HeaderMetric = {
       display: grid;
       gap: 14px;
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .header-metric {
+      background: color-mix(in srgb, var(--surface-muted) 54%, transparent);
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .mood-trend {
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      padding: 12px;
+    }
+
+    .trend-heading {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    .trend-heading p {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 2px;
+    }
+
+    .trend-heading strong {
+      color: var(--accent-strong);
+      font-size: 1.2rem;
+      font-weight: 760;
+    }
+
+    .trend-chart {
+      display: block;
+      height: 92px;
+      overflow: visible;
+      width: 100%;
+    }
+
+    .trend-grid-line {
+      stroke: color-mix(in srgb, var(--line) 72%, transparent);
+      stroke-width: 1;
+    }
+
+    .trend-line {
+      fill: none;
+      stroke: var(--accent);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .trend-point {
+      fill: var(--surface);
+      stroke: var(--accent-strong);
+      stroke-width: 2;
     }
 
     dt {
@@ -226,6 +364,13 @@ type HeaderMetric = {
     .journal {
       display: grid;
       gap: 14px;
+    }
+
+    .detail-grid {
+      align-items: start;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
     }
 
     .entry-heading {
@@ -251,8 +396,42 @@ type HeaderMetric = {
       font-weight: 700;
     }
 
+    .status-pill,
+    .mood-chip {
+      border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      background: var(--attention-normal-soft);
+      border-color: color-mix(in srgb, var(--attention-normal) 24%, var(--line));
+      color: var(--attention-normal);
+    }
+
+    .status-pill.is-high {
+      background: var(--attention-high-soft);
+      border-color: color-mix(in srgb, var(--attention-high) 28%, var(--line));
+      color: var(--attention-high);
+    }
+
+    .status-pill.is-medium {
+      background: var(--attention-medium-soft);
+      border-color: color-mix(in srgb, var(--attention-medium) 26%, var(--line));
+      color: var(--attention-medium);
+    }
+
     .entry-details {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .entry-card {
+      gap: 16px;
+      padding: 18px;
     }
 
     ul {
@@ -267,17 +446,22 @@ type HeaderMetric = {
 
     .journal {
       gap: 6px;
+      line-height: 1.55;
     }
 
     .note-form {
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
       display: grid;
       gap: 12px;
+      padding: 16px;
     }
 
     textarea {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       color: var(--text);
       min-height: 112px;
       padding: 12px 14px;
@@ -287,13 +471,27 @@ type HeaderMetric = {
     button {
       background: var(--accent);
       border: 0;
-      border-radius: 8px;
-      color: var(--surface);
+      border-radius: var(--radius-sm);
+      color: #ffffff;
       cursor: pointer;
       font-weight: 650;
       justify-self: start;
       min-height: 42px;
       padding: 0 16px;
+    }
+
+    .load-more {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--accent-strong);
+      justify-self: center;
+      min-height: 38px;
+      padding-inline: 14px;
+    }
+
+    .load-more:hover {
+      background: var(--accent-soft);
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
     }
 
     button:disabled,
@@ -308,14 +506,32 @@ type HeaderMetric = {
       white-space: pre-wrap;
     }
 
+    .message {
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
+    }
+
+    .message.compact {
+      font-size: 0.85rem;
+      padding: 10px 12px;
+    }
+
     .error {
-      color: #8f2f24;
+      background: var(--error-soft);
+      border-color: color-mix(in srgb, var(--error) 24%, var(--line));
+      color: var(--error);
     }
 
     @media (max-width: 900px) {
-      .header-grid,
-      .entry-details {
+      .patient-summary-grid,
+      .detail-grid {
         grid-template-columns: 1fr;
+      }
+
+      .header-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .entry-heading {
@@ -328,6 +544,13 @@ type HeaderMetric = {
         flex-direction: column;
       }
     }
+
+    @media (max-width: 640px) {
+      .header-grid,
+      .entry-details {
+        grid-template-columns: 1fr;
+      }
+    }
   `
 })
 export class PatientDetailsPageComponent {
@@ -336,6 +559,7 @@ export class PatientDetailsPageComponent {
   private readonly moodEntriesService = inject(MoodEntriesService);
   private readonly therapistNotesService = inject(TherapistNotesService);
   private readonly attentionService = inject(AttentionService);
+  private readonly visiblePageSize = 10;
   private readonly patientLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
   private readonly notesLoaded = signal(false);
@@ -346,6 +570,8 @@ export class PatientDetailsPageComponent {
   protected readonly notesErrorMessage = signal('');
   protected readonly saveNoteErrorMessage = signal('');
   protected readonly noteText = signal('');
+  protected readonly visibleMoodEntryCount = signal(this.visiblePageSize);
+  protected readonly visibleTherapistNoteCount = signal(this.visiblePageSize);
   protected readonly savingNote = signal(false);
   protected readonly patient = toSignal(
     this.usersService.getUser(this.patientId).pipe(
@@ -386,7 +612,53 @@ export class PatientDetailsPageComponent {
   protected readonly loading = computed(() => !this.patientLoaded() || !this.moodEntriesLoaded());
   protected readonly notesLoading = computed(() => !this.notesLoaded());
   protected readonly saveDisabled = computed(() => this.savingNote() || this.noteText().trim().length === 0);
-  protected readonly latestEntry = computed(() => this.moodEntries()[0]);
+  protected readonly latestEntry = computed<MoodEntry | undefined>(() => this.moodEntries()[0]);
+  protected readonly visibleMoodEntries = computed(() => this.moodEntries().slice(0, this.visibleMoodEntryCount()));
+  protected readonly visibleTherapistNotes = computed(() => this.therapistNotes().slice(0, this.visibleTherapistNoteCount()));
+  protected readonly canLoadMoreMoodEntries = computed(() => this.visibleMoodEntries().length < this.moodEntries().length);
+  protected readonly canLoadMoreTherapistNotes = computed(() => this.visibleTherapistNotes().length < this.therapistNotes().length);
+  protected readonly moodTrendPoints = computed<MoodTrendPoint[]>(() => {
+    const entries = this.moodEntries()
+      .filter((entry) => typeof entry.moodLevel === 'number')
+      .slice(0, 10)
+      .reverse();
+    const chart = {
+      left: 12,
+      right: 268,
+      top: 14,
+      bottom: 76,
+      minMood: 1,
+      maxMood: 10
+    };
+
+    if (entries.length === 0) {
+      return [];
+    }
+
+    return entries.map((entry, index) => {
+      const x =
+        entries.length === 1
+          ? (chart.left + chart.right) / 2
+          : chart.left + ((chart.right - chart.left) * index) / (entries.length - 1);
+      const moodLevel = entry.moodLevel ?? chart.minMood;
+      const clampedMood = Math.min(chart.maxMood, Math.max(chart.minMood, moodLevel));
+      const y =
+        chart.bottom -
+        ((clampedMood - chart.minMood) / (chart.maxMood - chart.minMood)) * (chart.bottom - chart.top);
+
+      return {
+        x: Number(x.toFixed(1)),
+        y: Number(y.toFixed(1)),
+        mood: this.formatMood(entry.moodLevel),
+        label: this.formatDate(entry.createdAt)
+      };
+    });
+  });
+  protected readonly moodTrendLine = computed(() => {
+    return this.moodTrendPoints()
+      .map((point) => `${point.x},${point.y}`)
+      .join(' ');
+  });
   protected readonly attentionSummary = computed(() => {
     return this.attentionService.calculatePatientAttention(this.moodEntries());
   });
@@ -433,6 +705,14 @@ export class PatientDetailsPageComponent {
 
   protected formatAttentionLevel(level: AttentionLevel): string {
     return this.labels.attention[level];
+  }
+
+  protected loadMoreMoodEntries(): void {
+    this.visibleMoodEntryCount.update((count) => count + this.visiblePageSize);
+  }
+
+  protected loadMoreTherapistNotes(): void {
+    this.visibleTherapistNoteCount.update((count) => count + this.visiblePageSize);
   }
 
   protected formatDate(value: unknown): string {

@@ -34,11 +34,11 @@ type TemplateView = {
       }
 
       <div class="summary" aria-label="Template summary">
-        <article>
+        <article class="summary-card">
           <span>{{ labels.templates.totalTemplates }}</span>
           <strong>{{ templates().length }}</strong>
         </article>
-        <article>
+        <article class="summary-card">
           <span>{{ labels.templates.activeTemplates }}</span>
           <strong>{{ templates().length }}</strong>
         </article>
@@ -63,10 +63,10 @@ type TemplateView = {
         } @else {
           <div class="templates">
             @for (template of filteredTemplates(); track template.id) {
-              <article>
+              <article class="template-card">
                 <div class="template-heading">
                   <h3>{{ template.title }}</h3>
-                  <span>{{ template.type }}</span>
+                  <span class="type-pill">{{ template.type }}</span>
                 </div>
                 <p>{{ template.body }}</p>
                 <dl>
@@ -91,7 +91,12 @@ type TemplateView = {
     .heading,
     .templates {
       display: grid;
-      gap: 16px;
+      gap: var(--template-grid-gap, 16px);
+    }
+
+    .page {
+      --template-grid-gap: 16px;
+      gap: 18px;
     }
 
     h2,
@@ -103,12 +108,14 @@ type TemplateView = {
     }
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.95rem;
+      font-weight: 720;
       letter-spacing: 0;
     }
 
     h3 {
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 720;
       letter-spacing: 0;
     }
 
@@ -120,45 +127,72 @@ type TemplateView = {
       color: var(--muted);
     }
 
+    .heading p {
+      line-height: 1.55;
+      max-width: 700px;
+    }
+
     .summary {
       display: grid;
       gap: 16px;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    article {
+    .summary-card,
+    .template-card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       display: grid;
       gap: 14px;
-      padding: 20px;
+      padding: 18px;
     }
 
-    .summary article {
+    .summary-card {
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 52%, transparent), transparent 76%),
+        var(--surface);
       gap: 8px;
     }
 
     .summary strong {
-      font-size: 2rem;
+      font-size: 1.9rem;
+      font-weight: 730;
       letter-spacing: 0;
+      line-height: 1.05;
     }
 
     .search {
-      color: var(--muted);
+      background: color-mix(in srgb, var(--surface) 84%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      color: var(--muted-strong);
       display: grid;
       gap: 8px;
       font-size: 0.875rem;
-      max-width: 520px;
+      font-weight: 650;
+      padding: 14px;
+      width: calc((100% - 32px) / 3);
     }
 
     input {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       color: var(--text);
       min-height: 44px;
       padding: 0 14px;
+    }
+
+    input::placeholder {
+      color: var(--muted);
+    }
+
+    .templates {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      justify-content: start;
     }
 
     .template-heading {
@@ -168,11 +202,17 @@ type TemplateView = {
       justify-content: space-between;
     }
 
-    .template-heading span {
+    .template-card p {
+      line-height: 1.6;
+    }
+
+    .type-pill {
+      background: var(--accent-soft);
       border: 1px solid var(--line);
       border-radius: 999px;
-      color: var(--muted);
-      font-size: 0.875rem;
+      color: var(--accent-strong);
+      font-size: 0.78rem;
+      font-weight: 750;
       padding: 6px 10px;
       white-space: nowrap;
     }
@@ -194,8 +234,38 @@ type TemplateView = {
       font-weight: 650;
     }
 
+    .message {
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      margin: 0;
+      padding: 13px 15px;
+    }
+
     .error {
-      color: #8f2f24;
+      background: var(--error-soft);
+      border-color: color-mix(in srgb, var(--error) 24%, var(--line));
+      color: var(--error);
+    }
+
+    @media (max-width: 1080px) {
+      .search {
+        width: calc((100% - 16px) / 2);
+      }
+
+      .templates {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .templates {
+        grid-template-columns: 1fr;
+      }
+
+      .search {
+        width: 100%;
+      }
     }
 
     @media (max-width: 720px) {

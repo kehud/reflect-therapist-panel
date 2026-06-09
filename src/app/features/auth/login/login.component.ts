@@ -159,13 +159,13 @@ import { APP_LABELS } from '../../../shared/utils/app-labels';
     }
 
     .error {
-      background: color-mix(in srgb, #c0392b 12%, var(--surface));
-      color: #8f2f24;
+      background: var(--error-soft);
+      color: var(--error);
     }
 
     .success {
-      background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-      color: var(--accent-strong);
+      background: var(--success-soft);
+      color: var(--success);
     }
   `
 })

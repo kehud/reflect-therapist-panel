@@ -16,7 +16,7 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
   styles: `
     .page {
       display: grid;
-      gap: 20px;
+      gap: 22px;
     }
 
     h2,
@@ -26,21 +26,31 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
     }
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.95rem;
+      font-weight: 720;
       letter-spacing: 0;
     }
 
     .settings-panel {
-      background: var(--surface);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 54%, transparent), transparent 74%),
+        var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       display: grid;
       gap: 8px;
-      padding: 24px;
+      max-width: 680px;
+      padding: 22px;
+    }
+
+    h3 {
+      font-size: 1rem;
     }
 
     p {
       color: var(--muted);
+      line-height: 1.55;
     }
   `
 })

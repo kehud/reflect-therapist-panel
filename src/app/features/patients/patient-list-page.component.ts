@@ -18,6 +18,7 @@ type PatientRow = {
   lastEntry: string;
   entryCount: string;
   status: string;
+  statusLevel: AttentionLevel;
 };
 
 @Component({
@@ -54,10 +55,18 @@ type PatientRow = {
                 <strong>{{ row.name }}</strong>
                 <small>{{ row.email }}</small>
               </span>
-              <span role="cell">{{ row.latestMood }}</span>
-              <span role="cell">{{ row.lastEntry }}</span>
-              <span role="cell">{{ row.entryCount }}</span>
-              <span role="cell">{{ row.status }}</span>
+              <span role="cell" [attr.data-label]="labels.patients.latestMood">{{ row.latestMood }}</span>
+              <span role="cell" [attr.data-label]="labels.patients.lastEntry">{{ row.lastEntry }}</span>
+              <span role="cell" [attr.data-label]="labels.patients.entries">{{ row.entryCount }}</span>
+              <span
+                class="status-pill"
+                [class.is-high]="row.statusLevel === 'high'"
+                [class.is-medium]="row.statusLevel === 'medium'"
+                role="cell"
+                [attr.data-label]="labels.patients.status"
+              >
+                {{ row.status }}
+              </span>
             </a>
           }
         </div>
@@ -68,7 +77,11 @@ type PatientRow = {
     .page,
     .heading {
       display: grid;
-      gap: 16px;
+      gap: 14px;
+    }
+
+    .page {
+      gap: 18px;
     }
 
     h2,
@@ -77,7 +90,8 @@ type PatientRow = {
     }
 
     h2 {
-      font-size: 2rem;
+      font-size: 1.95rem;
+      font-weight: 720;
       letter-spacing: 0;
     }
 
@@ -88,18 +102,26 @@ type PatientRow = {
       color: var(--muted);
     }
 
+    .heading p {
+      line-height: 1.55;
+      max-width: 680px;
+    }
+
     .table {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
       overflow: hidden;
     }
 
     .row {
+      align-items: center;
       display: grid;
       gap: 16px;
-      grid-template-columns: 1.4fr 0.9fr 1fr 0.6fr 0.9fr;
-      padding: 16px 18px;
+      grid-template-columns: minmax(240px, 1.55fr) 0.7fr 1fr 0.45fr 0.75fr;
+      min-height: 64px;
+      padding: 13px 18px;
     }
 
     .row + .row {
@@ -107,9 +129,14 @@ type PatientRow = {
     }
 
     .row.header {
-      background: var(--surface-muted);
+      background: color-mix(in srgb, var(--surface-muted) 70%, var(--surface));
       color: var(--text);
-      font-weight: 700;
+      font-size: 0.76rem;
+      font-weight: 750;
+      letter-spacing: 0.05em;
+      min-height: 44px;
+      padding-block: 11px;
+      text-transform: uppercase;
     }
 
     a.row:hover {
@@ -119,19 +146,96 @@ type PatientRow = {
     .patient {
       display: grid;
       gap: 4px;
+      min-width: 0;
     }
 
     strong {
       color: var(--text);
+      font-weight: 720;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    [role='cell']:not(.patient) {
+      color: var(--muted-strong);
+      font-size: 0.92rem;
+    }
+
+    .status-pill {
+      justify-self: start;
+      border: 1px solid color-mix(in srgb, var(--attention-normal) 24%, var(--line));
+      border-radius: 999px;
+      background: var(--attention-normal-soft);
+      color: var(--attention-normal);
+      font-size: 0.78rem;
+      font-weight: 750;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    .status-pill.is-high {
+      background: var(--attention-high-soft);
+      border-color: color-mix(in srgb, var(--attention-high) 28%, var(--line));
+      color: var(--attention-high);
+    }
+
+    .status-pill.is-medium {
+      background: var(--attention-medium-soft);
+      border-color: color-mix(in srgb, var(--attention-medium) 26%, var(--line));
+      color: var(--attention-medium);
+    }
+
+    .message {
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      margin: 0;
+      padding: 13px 15px;
     }
 
     .error {
-      color: #8f2f24;
+      background: var(--error-soft);
+      border-color: color-mix(in srgb, var(--error) 24%, var(--line));
+      color: var(--error);
     }
 
     @media (max-width: 900px) {
+      .row.header {
+        display: none;
+      }
+
       .row {
+        align-items: stretch;
+        gap: 10px;
         grid-template-columns: 1fr;
+        min-height: 0;
+        padding: 16px;
+      }
+
+      [role='cell']:not(.patient) {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      [role='cell']:not(.patient)::before {
+        color: var(--muted);
+        content: attr(data-label);
+        font-size: 0.76rem;
+        font-weight: 750;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .status-pill {
+        justify-self: stretch;
       }
     }
   `
@@ -185,7 +289,8 @@ export class PatientListPageComponent {
         latestMood: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels.patients.noMood,
         lastEntry: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels.patients.noEntries,
         entryCount: String(entries.length),
-        status: this.formatAttentionLevel(attention.level)
+        status: this.formatAttentionLevel(attention.level),
+        statusLevel: attention.level
       };
     });
   });
