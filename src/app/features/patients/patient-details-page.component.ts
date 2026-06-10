@@ -23,7 +23,25 @@ type MoodTrendPoint = {
   y: number;
   mood: string;
   label: string;
+  axisLabel: string;
+  tooltip: string;
 };
+
+type TimelineItem =
+  | {
+      id: string;
+      type: 'mood';
+      date: unknown;
+      sortTime: number;
+      entry: MoodEntry;
+    }
+  | {
+      id: string;
+      type: 'note';
+      date: unknown;
+      sortTime: number;
+      note: TherapistNote;
+    };
 
 @Component({
   selector: 'app-patient-details-page',
@@ -48,9 +66,13 @@ type MoodTrendPoint = {
           <div class="patient-summary-grid">
             <dl class="header-grid">
               @for (metric of headerMetrics(); track metric.label) {
-                <div class="header-metric">
+                <div
+                  class="header-metric"
+                  [class.is-email]="metric.label === labels.patientDetails.email"
+                  [class.is-date]="metric.label === labels.patientDetails.lastCheckIn"
+                >
                   <dt>{{ metric.label }}</dt>
-                  <dd>{{ metric.value }}</dd>
+                  <dd [attr.title]="metric.value">{{ metric.value }}</dd>
                 </div>
               }
             </dl>
@@ -69,15 +91,21 @@ type MoodTrendPoint = {
               @if (moodTrendPoints().length === 0) {
                 <p class="message compact">{{ labels.patientDetails.noMoodTrend }}</p>
               } @else {
-                <svg class="trend-chart" viewBox="0 0 280 92" role="img" [attr.aria-label]="labels.patientDetails.moodTrend">
-                  <line class="trend-grid-line" x1="12" y1="16" x2="268" y2="16" />
-                  <line class="trend-grid-line" x1="12" y1="46" x2="268" y2="46" />
-                  <line class="trend-grid-line" x1="12" y1="76" x2="268" y2="76" />
+                <svg class="trend-chart" viewBox="0 0 900 180" role="img" [attr.aria-label]="labels.patientDetails.moodTrend">
+                  <line class="trend-grid-line" x1="45" y1="30" x2="855" y2="30" />
+                  <line class="trend-grid-line" x1="45" y1="78" x2="855" y2="78" />
+                  <line class="trend-grid-line" x1="45" y1="126" x2="855" y2="126" />
+                  <line class="trend-axis-line" x1="45" y1="142" x2="855" y2="142" />
                   <polyline class="trend-line" [attr.points]="moodTrendLine()" />
                   @for (point of moodTrendPoints(); track point.label + point.x) {
-                    <circle class="trend-point" [attr.cx]="point.x" [attr.cy]="point.y" r="3.2">
-                      <title>{{ point.label }}: {{ point.mood }}</title>
-                    </circle>
+                    <g class="trend-point-group" tabindex="0" [attr.aria-label]="point.tooltip">
+                      <title>{{ point.tooltip }}</title>
+                      <circle class="trend-hit-area" [attr.cx]="point.x" [attr.cy]="point.y" r="11" />
+                      <circle class="trend-point" [attr.cx]="point.x" [attr.cy]="point.y" r="5" />
+                    </g>
+                    @if (point.axisLabel) {
+                      <text class="trend-axis-label" [attr.x]="point.x" y="168" text-anchor="middle">{{ point.axisLabel }}</text>
+                    }
                   }
                 </svg>
               }
@@ -108,97 +136,90 @@ type MoodTrendPoint = {
           }
         </section>
 
-        <div class="detail-grid">
-          <section class="history" aria-labelledby="mood-history">
-            <h3 id="mood-history">{{ labels.patientDetails.moodHistory }}</h3>
+        <section class="timeline-panel" aria-labelledby="patient-timeline">
+          <form class="note-form" (ngSubmit)="saveNote()">
+            <textarea
+              name="therapistNote"
+              rows="4"
+              [placeholder]="labels.patientDetails.notePlaceholder"
+              [disabled]="savingNote()"
+              [ngModel]="noteText()"
+              (ngModelChange)="noteText.set($event)"
+            ></textarea>
 
-            @if (moodEntries().length === 0) {
-              <p class="message">{{ labels.patientDetails.noMoodEntries }}</p>
-            } @else {
-              <div class="entries">
-                @for (entry of visibleMoodEntries(); track entry.id) {
-                  <article class="entry-card">
-                    <div class="entry-heading">
-                      <strong>{{ formatDate(entry.createdAt) }}</strong>
-                      <span class="mood-chip">{{ labels.patientDetails.moodLevel }}: {{ formatMood(entry.moodLevel) }}</span>
+            <button type="submit" [disabled]="saveDisabled()">
+              {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
+            </button>
+          </form>
+
+          @if (saveNoteErrorMessage()) {
+            <p class="message error" role="alert">{{ saveNoteErrorMessage() }}</p>
+          }
+
+          <div class="timeline-heading">
+            <h3 id="patient-timeline">Patient Timeline</h3>
+            <p>Mood entries and therapist notes in chronological order.</p>
+          </div>
+
+          @if (timelineLoading()) {
+            <p class="message">{{ labels.common.loading }}</p>
+          } @else if (notesErrorMessage()) {
+            <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
+          } @else if (timelineItems().length === 0) {
+            <p class="message">{{ labels.patientDetails.noMoodEntries }} {{ labels.patientDetails.noTherapistNotes }}</p>
+          } @else {
+            <div class="timeline">
+              @for (item of visibleTimelineItems(); track item.id) {
+                @if (item.type === 'mood') {
+                  <article class="timeline-card is-mood">
+                    <div class="timeline-card-header">
+                      <div class="timeline-title-group">
+                        <p class="timeline-type">Mood Check-in</p>
+                        <time [attr.datetime]="formatDateTimeAttribute(item.date)">{{ formatDate(item.date) }}</time>
+                      </div>
+                      <span class="mood-chip">{{ labels.patientDetails.moodLevel }}: {{ formatMood(item.entry.moodLevel) }}</span>
                     </div>
 
                     <dl class="entry-details">
                       <div>
                         <dt>{{ labels.patientDetails.emotions }}</dt>
-                        <dd>{{ formatList(entry.emotions) }}</dd>
+                        <dd>{{ formatList(item.entry.emotions) }}</dd>
                       </div>
                       <div>
                         <dt>{{ labels.patientDetails.influences }}</dt>
-                        <dd>{{ formatList(entry.influences) }}</dd>
+                        <dd>{{ formatList(item.entry.influences) }}</dd>
                       </div>
                     </dl>
 
-                    @if (entry.journalNote) {
+                    @if (item.entry.journalNote) {
                       <p class="journal">
                         <strong>{{ labels.patientDetails.journalNote }}</strong>
-                        <span>{{ entry.journalNote }}</span>
+                        <span>{{ item.entry.journalNote }}</span>
                       </p>
                     }
                   </article>
-                }
-              </div>
-
-              @if (canLoadMoreMoodEntries()) {
-                <button class="load-more" type="button" (click)="loadMoreMoodEntries()">{{ labels.common.loadMore }}</button>
-              }
-            }
-          </section>
-
-          <section class="notes" aria-labelledby="therapist-notes">
-            <div class="section-heading">
-              <h3 id="therapist-notes">{{ labels.patientDetails.therapistNotes }}</h3>
-            </div>
-
-            <form class="note-form" (ngSubmit)="saveNote()">
-              <textarea
-                name="therapistNote"
-                rows="4"
-                [placeholder]="labels.patientDetails.notePlaceholder"
-                [disabled]="savingNote()"
-                [ngModel]="noteText()"
-                (ngModelChange)="noteText.set($event)"
-              ></textarea>
-
-              <button type="submit" [disabled]="saveDisabled()">
-                {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
-              </button>
-            </form>
-
-            @if (saveNoteErrorMessage()) {
-              <p class="message error" role="alert">{{ saveNoteErrorMessage() }}</p>
-            }
-
-            @if (notesLoading()) {
-              <p class="message">{{ labels.common.loading }}</p>
-            } @else if (notesErrorMessage()) {
-              <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
-            } @else if (therapistNotes().length === 0) {
-              <p class="message">{{ labels.patientDetails.noTherapistNotes }}</p>
-            } @else {
-              <div class="entries">
-                @for (note of visibleTherapistNotes(); track note.id) {
-                  <article class="entry-card note-card">
-                    <div class="entry-heading">
-                      <strong>{{ formatDate(note.createdAt) }}</strong>
-                      <span>{{ note.therapistName }}</span>
+                } @else {
+                  <article class="timeline-card is-note">
+                    <div class="timeline-card-header">
+                      <div class="timeline-title-group">
+                        <p class="timeline-type">Therapist Note</p>
+                        <time [attr.datetime]="formatDateTimeAttribute(item.date)">{{ formatDate(item.date) }}</time>
+                      </div>
+                      @if (item.note.therapistName) {
+                        <span class="author-name">{{ item.note.therapistName }}</span>
+                      }
                     </div>
-                    <p class="note-text">{{ note.note }}</p>
+                    <p class="note-text">{{ item.note.note }}</p>
                   </article>
                 }
-              </div>
-
-              @if (canLoadMoreTherapistNotes()) {
-                <button class="load-more" type="button" (click)="loadMoreTherapistNotes()">{{ labels.common.loadMore }}</button>
               }
+            </div>
+
+            @if (canLoadMoreTimelineItems()) {
+              <button class="load-more" type="button" (click)="loadMoreTimelineItems()">{{ labels.common.loadMore }}</button>
             }
-          </section>
-        </div>
+          }
+        </section>
       }
     </section>
   `,
@@ -232,7 +253,8 @@ type MoodTrendPoint = {
     .eyebrow,
     dt,
     .message,
-    .entry-heading span,
+    .timeline-card time,
+    .author-name,
     .journal span {
       color: var(--muted);
     }
@@ -245,8 +267,7 @@ type MoodTrendPoint = {
     }
 
     .patient-header,
-    .attention-card,
-    .entry-card {
+    .attention-card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
@@ -272,32 +293,62 @@ type MoodTrendPoint = {
       align-items: stretch;
       display: grid;
       gap: 14px;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
+      grid-template-columns: minmax(240px, 0.42fr) minmax(0, 1.58fr);
     }
 
     .header-grid,
     .entry-details {
       display: grid;
       gap: 14px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .header-grid {
+      grid-template-columns: 1fr;
     }
 
     .header-metric {
       background: color-mix(in srgb, var(--surface-muted) 54%, transparent);
       border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
       border-radius: var(--radius-md);
-      padding: 12px;
+      display: grid;
+      gap: 6px;
+      min-height: 74px;
       min-width: 0;
+      padding: 13px 14px;
+    }
+
+    .header-metric dd {
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+
+    .header-metric.is-email dd,
+    .header-metric.is-date dd {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .header-metric.is-email dd {
+      font-size: 0.9rem;
+    }
+
+    .header-metric.is-date dd {
+      font-size: 0.94rem;
     }
 
     .mood-trend {
+      --trend-color: color-mix(in srgb, #14b8a6 58%, #64748b);
+      --trend-soft: color-mix(in srgb, #14b8a6 14%, var(--surface));
       background: color-mix(in srgb, var(--surface) 88%, transparent);
       border: 1px solid var(--line);
       border-radius: var(--radius-md);
       display: grid;
       gap: 8px;
       min-width: 0;
-      padding: 12px;
+      padding: 10px 10px 8px;
     }
 
     .trend-heading {
@@ -321,28 +372,60 @@ type MoodTrendPoint = {
 
     .trend-chart {
       display: block;
-      height: 92px;
+      height: 180px;
+      justify-self: stretch;
+      max-width: none;
+      min-width: 0;
       overflow: visible;
       width: 100%;
     }
 
-    .trend-grid-line {
-      stroke: color-mix(in srgb, var(--line) 72%, transparent);
+    .trend-grid-line,
+    .trend-axis-line {
+      stroke: color-mix(in srgb, var(--line) 42%, transparent);
       stroke-width: 1;
+    }
+
+    .trend-axis-line {
+      stroke: color-mix(in srgb, var(--line) 58%, transparent);
     }
 
     .trend-line {
       fill: none;
-      stroke: var(--accent);
+      stroke: var(--trend-color);
       stroke-linecap: round;
       stroke-linejoin: round;
-      stroke-width: 3;
+      stroke-width: 4.4;
+    }
+
+    .trend-point-group {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .trend-hit-area {
+      fill: transparent;
     }
 
     .trend-point {
       fill: var(--surface);
-      stroke: var(--accent-strong);
-      stroke-width: 2;
+      stroke: var(--trend-color);
+      stroke-width: 3.2;
+      transition:
+        fill 140ms ease,
+        stroke-width 140ms ease;
+    }
+
+    .trend-point-group:hover .trend-point,
+    .trend-point-group:focus-visible .trend-point {
+      fill: var(--trend-soft);
+      stroke-width: 3.8;
+    }
+
+    .trend-axis-label {
+      fill: color-mix(in srgb, var(--muted) 88%, var(--text));
+      font-size: 8.8px;
+      font-weight: 650;
     }
 
     dt {
@@ -357,31 +440,24 @@ type MoodTrendPoint = {
       overflow-wrap: anywhere;
     }
 
-    .history,
-    .notes,
     .attention-card,
-    .entries,
+    .timeline-panel,
+    .timeline,
     .journal {
       display: grid;
       gap: 14px;
     }
 
-    .detail-grid {
-      align-items: start;
+    .timeline-heading {
       display: grid;
-      gap: 18px;
-      grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
+      gap: 4px;
+      padding-top: 2px;
     }
 
-    .entry-heading {
-      align-items: center;
-      display: flex;
-      gap: 16px;
-      justify-content: space-between;
-    }
-
-    .entry-heading span {
-      font-weight: 650;
+    .timeline-heading p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
     }
 
     .section-heading {
@@ -430,11 +506,6 @@ type MoodTrendPoint = {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .entry-card {
-      gap: 16px;
-      padding: 18px;
-    }
-
     ul {
       color: var(--muted);
       margin: 0;
@@ -448,6 +519,128 @@ type MoodTrendPoint = {
     .journal {
       gap: 6px;
       line-height: 1.55;
+    }
+
+    .timeline-card {
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 32%, transparent), transparent 58%),
+        var(--surface);
+      border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+      position: relative;
+    }
+
+    .timeline-card.is-mood {
+      border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+    }
+
+    .timeline-card.is-note {
+      border-color: color-mix(in srgb, var(--muted) 20%, var(--line));
+    }
+
+    .timeline {
+      padding-left: 44px;
+      position: relative;
+    }
+
+    .timeline::before {
+      background: color-mix(in srgb, var(--line) 78%, transparent);
+      bottom: 24px;
+      content: '';
+      left: 12px;
+      position: absolute;
+      top: 24px;
+      width: 1px;
+    }
+
+    .timeline-card::before {
+      background: var(--surface);
+      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      content: '';
+      height: 24px;
+      left: -44px;
+      position: absolute;
+      top: 15px;
+      width: 24px;
+      z-index: 1;
+    }
+
+    .timeline-card::after {
+      content: '';
+      position: absolute;
+      z-index: 2;
+    }
+
+    .timeline-card.is-mood::before {
+      background: color-mix(in srgb, #14b8a6 12%, var(--surface));
+      border-color: color-mix(in srgb, #14b8a6 36%, var(--line));
+      border-radius: 999px;
+      box-shadow: 0 0 0 5px color-mix(in srgb, #14b8a6 10%, transparent);
+    }
+
+    .timeline-card.is-mood::after {
+      background: #14b8a6;
+      clip-path: polygon(50% 90%, 13% 56%, 8% 34%, 21% 18%, 38% 18%, 50% 30%, 62% 18%, 79% 18%, 92% 34%, 87% 56%);
+      height: 11px;
+      left: -38px;
+      top: 21px;
+      width: 12px;
+    }
+
+    .timeline-card.is-note::before {
+      background: color-mix(in srgb, var(--surface-muted) 86%, var(--surface));
+      border-color: color-mix(in srgb, #64748b 34%, var(--line));
+      border-radius: 7px;
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--surface-muted) 44%, transparent);
+    }
+
+    .timeline-card.is-note::after {
+      border: 1.5px solid #64748b;
+      border-radius: 2px;
+      box-shadow: inset 0 4px 0 -3px color-mix(in srgb, #64748b 68%, transparent);
+      height: 11px;
+      left: -37px;
+      top: 21px;
+      width: 9px;
+    }
+
+    .timeline-card-header {
+      align-items: flex-start;
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+    }
+
+    .timeline-title-group {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .timeline-type {
+      align-items: center;
+      color: var(--accent-strong);
+      display: inline-flex;
+      font-size: 0.76rem;
+      font-weight: 760;
+      gap: 8px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .timeline-card time,
+    .author-name {
+      font-size: 0.9rem;
+      font-weight: 650;
+    }
+
+    .author-name {
+      overflow-wrap: anywhere;
+      text-align: right;
     }
 
     .note-form {
@@ -526,18 +719,21 @@ type MoodTrendPoint = {
     }
 
     @media (max-width: 900px) {
-      .patient-summary-grid,
-      .detail-grid {
+      .patient-summary-grid {
         grid-template-columns: 1fr;
       }
 
       .header-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
-      .entry-heading {
+      .timeline-card-header {
         align-items: flex-start;
         flex-direction: column;
+      }
+
+      .author-name {
+        text-align: left;
       }
 
       .section-heading {
@@ -571,8 +767,7 @@ export class PatientDetailsPageComponent {
   protected readonly notesErrorMessage = signal('');
   protected readonly saveNoteErrorMessage = signal('');
   protected readonly noteText = signal('');
-  protected readonly visibleMoodEntryCount = signal(this.visiblePageSize);
-  protected readonly visibleTherapistNoteCount = signal(this.visiblePageSize);
+  protected readonly visibleTimelineItemCount = signal(this.visiblePageSize);
   protected readonly savingNote = signal(false);
   protected readonly patient = toSignal(
     this.usersService.getUser(this.patientId).pipe(
@@ -611,23 +806,39 @@ export class PatientDetailsPageComponent {
     { initialValue: [] }
   );
   protected readonly loading = computed(() => !this.patientLoaded() || !this.moodEntriesLoaded());
-  protected readonly notesLoading = computed(() => !this.notesLoaded());
+  protected readonly timelineLoading = computed(() => !this.moodEntriesLoaded() || !this.notesLoaded());
   protected readonly saveDisabled = computed(() => this.savingNote() || this.noteText().trim().length === 0);
   protected readonly latestEntry = computed<MoodEntry | undefined>(() => this.moodEntries()[0]);
-  protected readonly visibleMoodEntries = computed(() => this.moodEntries().slice(0, this.visibleMoodEntryCount()));
-  protected readonly visibleTherapistNotes = computed(() => this.therapistNotes().slice(0, this.visibleTherapistNoteCount()));
-  protected readonly canLoadMoreMoodEntries = computed(() => this.visibleMoodEntries().length < this.moodEntries().length);
-  protected readonly canLoadMoreTherapistNotes = computed(() => this.visibleTherapistNotes().length < this.therapistNotes().length);
+  protected readonly timelineItems = computed<TimelineItem[]>(() => {
+    const moodItems: TimelineItem[] = this.moodEntries().map((entry, index) => ({
+      id: `mood-${entry.id || index}`,
+      type: 'mood',
+      date: entry.createdAt,
+      sortTime: this.toMillis(entry.createdAt),
+      entry
+    }));
+    const noteItems: TimelineItem[] = this.therapistNotes().map((note, index) => ({
+      id: `note-${note.id || index}`,
+      type: 'note',
+      date: note.createdAt,
+      sortTime: this.toMillis(note.createdAt),
+      note
+    }));
+
+    return [...moodItems, ...noteItems].sort((first, second) => second.sortTime - first.sortTime);
+  });
+  protected readonly visibleTimelineItems = computed(() => this.timelineItems().slice(0, this.visibleTimelineItemCount()));
+  protected readonly canLoadMoreTimelineItems = computed(() => this.visibleTimelineItems().length < this.timelineItems().length);
   protected readonly moodTrendPoints = computed<MoodTrendPoint[]>(() => {
     const entries = this.moodEntries()
       .filter((entry) => typeof entry.moodLevel === 'number')
       .slice(0, 10)
       .reverse();
     const chart = {
-      left: 12,
-      right: 268,
-      top: 14,
-      bottom: 76,
+      left: 45,
+      right: 855,
+      top: 30,
+      bottom: 126,
       minMood: 1,
       maxMood: 10
     };
@@ -635,6 +846,8 @@ export class PatientDetailsPageComponent {
     if (entries.length === 0) {
       return [];
     }
+
+    let lastVisibleAxisLabel = '';
 
     return entries.map((entry, index) => {
       const x =
@@ -646,12 +859,21 @@ export class PatientDetailsPageComponent {
       const y =
         chart.bottom -
         ((clampedMood - chart.minMood) / (chart.maxMood - chart.minMood)) * (chart.bottom - chart.top);
+      const axisLabel = this.formatShortDate(entry.createdAt);
+      const showAxisLabel = entries.length <= 5 || index === 0 || index === entries.length - 1 || index % 2 === 0;
+      const visibleAxisLabel = showAxisLabel && axisLabel !== lastVisibleAxisLabel ? axisLabel : '';
+
+      if (visibleAxisLabel) {
+        lastVisibleAxisLabel = visibleAxisLabel;
+      }
 
       return {
         x: Number(x.toFixed(1)),
         y: Number(y.toFixed(1)),
         mood: this.formatMood(entry.moodLevel),
-        label: this.formatDate(entry.createdAt)
+        label: this.formatDate(entry.createdAt),
+        axisLabel: visibleAxisLabel,
+        tooltip: `Date: ${this.formatDate(entry.createdAt)} | Mood: ${this.formatMood(entry.moodLevel)}`
       };
     });
   });
@@ -676,10 +898,6 @@ export class PatientDetailsPageComponent {
       {
         label: this.labels.patientDetails.email,
         value: patient?.email ?? this.labels.patientDetails.none
-      },
-      {
-        label: this.labels.patientDetails.role,
-        value: patient?.role ? this.labels.roles[patient.role] : this.labels.patientDetails.none
       },
       {
         label: this.labels.patientDetails.latestMood,
@@ -708,24 +926,39 @@ export class PatientDetailsPageComponent {
     return this.labels.attention[level];
   }
 
-  protected loadMoreMoodEntries(): void {
-    this.visibleMoodEntryCount.update((count) => count + this.visiblePageSize);
-  }
-
-  protected loadMoreTherapistNotes(): void {
-    this.visibleTherapistNoteCount.update((count) => count + this.visiblePageSize);
+  protected loadMoreTimelineItems(): void {
+    this.visibleTimelineItemCount.update((count) => count + this.visiblePageSize);
   }
 
   protected formatDate(value: unknown): string {
     const date = this.toDate(value);
 
-    if (!date) {
+    if (!date || Number.isNaN(date.getTime())) {
       return this.labels.patients.noEntries;
     }
 
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: 'medium',
       timeStyle: 'short'
+    }).format(date);
+  }
+
+  protected formatDateTimeAttribute(value: unknown): string | null {
+    const date = this.toDate(value);
+
+    return date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+  }
+
+  protected formatShortDate(value: unknown): string {
+    const date = this.toDate(value);
+
+    if (!date || Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric'
     }).format(date);
   }
 
@@ -750,6 +983,18 @@ export class PatientDetailsPageComponent {
     } finally {
       this.savingNote.set(false);
     }
+  }
+
+  private toMillis(value: unknown): number {
+    const date = this.toDate(value);
+
+    if (!date) {
+      return 0;
+    }
+
+    const time = date.getTime();
+
+    return Number.isNaN(time) ? 0 : time;
   }
 
   private toDate(value: unknown): Date | null {
