@@ -1,31 +1,31 @@
 import { Component, inject } from '@angular/core';
 
+import { AppLanguageService, type AppLanguage } from '../../core/services/app-language.service';
 import { type AppTheme, ThemeService } from '../../core/services/theme.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
 
 @Component({
   selector: 'app-settings-page',
   template: `
     <section class="page">
-      <h2>{{ labels.pages.settingsTitle }}</h2>
+      <h2>{{ labels().pages.settingsTitle }}</h2>
       <div class="settings-panel">
-        <h3>{{ labels.settings.panelSettings }}</h3>
-        <p>{{ labels.settings.panelDescription }}</p>
+        <h3>{{ labels().settings.panelSettings }}</h3>
+        <p>{{ labels().settings.panelDescription }}</p>
 
         <div class="setting-row">
           <span class="setting-copy">
-            <strong>{{ labels.settings.theme }}</strong>
-            <small>{{ labels.settings.themeDescription }}</small>
+            <strong>{{ labels().settings.theme }}</strong>
+            <small>{{ labels().settings.themeDescription }}</small>
           </span>
 
-          <span class="theme-toggle" role="group" [attr.aria-label]="labels.settings.theme">
+          <span class="theme-toggle" role="group" [attr.aria-label]="labels().settings.theme">
             <button
               type="button"
               [class.is-active]="currentTheme() === 'light'"
               [attr.aria-pressed]="currentTheme() === 'light'"
               (click)="setTheme('light')"
             >
-              {{ labels.settings.light }}
+              {{ labels().settings.light }}
             </button>
             <button
               type="button"
@@ -33,7 +33,33 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
               [attr.aria-pressed]="currentTheme() === 'dark'"
               (click)="setTheme('dark')"
             >
-              {{ labels.settings.dark }}
+              {{ labels().settings.dark }}
+            </button>
+          </span>
+        </div>
+
+        <div class="setting-row">
+          <span class="setting-copy">
+            <strong>{{ labels().settings.language }}</strong>
+            <small>{{ labels().settings.languageDescription }}</small>
+          </span>
+
+          <span class="language-toggle" role="group" [attr.aria-label]="labels().settings.language">
+            <button
+              type="button"
+              [class.is-active]="currentLanguage() === 'en'"
+              [attr.aria-pressed]="currentLanguage() === 'en'"
+              (click)="setLanguage('en')"
+            >
+              {{ labels().settings.english }}
+            </button>
+            <button
+              type="button"
+              [class.is-active]="currentLanguage() === 'he'"
+              [attr.aria-pressed]="currentLanguage() === 'he'"
+              (click)="setLanguage('he')"
+            >
+              {{ labels().settings.hebrew }}
             </button>
           </span>
         </div>
@@ -67,8 +93,10 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
       box-shadow: var(--shadow-card);
       display: grid;
       gap: 8px;
+      justify-self: start;
       max-width: 680px;
       padding: 22px;
+      width: 100%;
     }
 
     .setting-row {
@@ -120,6 +148,17 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
       padding: 4px;
     }
 
+    .language-toggle {
+      background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      display: inline-grid;
+      flex: 0 0 auto;
+      gap: 4px;
+      grid-template-columns: repeat(2, minmax(116px, 1fr));
+      padding: 4px;
+    }
+
     button {
       background: transparent;
       border: 1px solid transparent;
@@ -149,7 +188,8 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
         flex-direction: column;
       }
 
-      .theme-toggle {
+      .theme-toggle,
+      .language-toggle {
         width: 100%;
       }
     }
@@ -157,11 +197,17 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
 })
 export class SettingsPageComponent {
   private readonly themeService = inject(ThemeService);
+  private readonly appLanguageService = inject(AppLanguageService);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly currentTheme = this.themeService.theme;
+  protected readonly currentLanguage = this.appLanguageService.language;
 
   protected setTheme(theme: AppTheme): void {
     this.themeService.setTheme(theme);
+  }
+
+  protected setLanguage(language: AppLanguage): void {
+    this.appLanguageService.setLanguage(language);
   }
 }

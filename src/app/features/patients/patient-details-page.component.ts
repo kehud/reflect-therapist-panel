@@ -7,11 +7,12 @@ import { catchError, of, tap } from 'rxjs';
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
 import { TherapistNote } from '../../core/models/therapist-note.model';
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { TherapistNotesService } from '../../core/services/firebase/therapist-notes.service';
 import { UsersService } from '../../core/services/firebase/users.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
+import { LayoutDirectionService } from '../../core/services/layout-direction.service';
 
 type HeaderMetric = {
   label: string;
@@ -53,13 +54,13 @@ type TimelineItem =
       }
 
       @if (loading()) {
-        <p class="message">{{ labels.common.loading }}</p>
+        <p class="message">{{ labels().common.loading }}</p>
       } @else if (!patient()) {
-        <p class="message">{{ labels.patientDetails.noPatient }}</p>
+        <p class="message">{{ labels().patientDetails.noPatient }}</p>
       } @else {
         <header class="patient-header">
           <div class="patient-title">
-            <p class="eyebrow">{{ labels.pages.patientDetailsTitle }}</p>
+            <p class="eyebrow">{{ labels().pages.patientDetailsTitle }}</p>
             <h2>{{ patientName() }}</h2>
           </div>
 
@@ -68,8 +69,8 @@ type TimelineItem =
               @for (metric of headerMetrics(); track metric.label) {
                 <div
                   class="header-metric"
-                  [class.is-email]="metric.label === labels.patientDetails.email"
-                  [class.is-date]="metric.label === labels.patientDetails.lastCheckIn"
+                  [class.is-email]="metric.label === labels().patientDetails.email"
+                  [class.is-date]="metric.label === labels().patientDetails.lastCheckIn"
                 >
                   <dt>{{ metric.label }}</dt>
                   <dd [attr.title]="metric.value">{{ metric.value }}</dd>
@@ -80,22 +81,25 @@ type TimelineItem =
             <section class="mood-trend" aria-labelledby="mood-trend-title">
               <div class="trend-heading">
                 <div>
-                  <h3 id="mood-trend-title">{{ labels.patientDetails.moodTrend }}</h3>
-                  <p>{{ labels.patientDetails.lastTenMoodEntries }}</p>
+                  <h3 id="mood-trend-title">{{ labels().patientDetails.moodTrend }}</h3>
+                  <p>{{ labels().patientDetails.lastTenMoodEntries }}</p>
                 </div>
-                @if (latestEntry()) {
-                  <strong>{{ formatMood(latestEntry()?.moodLevel) }}</strong>
-                }
               </div>
 
               @if (moodTrendPoints().length === 0) {
-                <p class="message compact">{{ labels.patientDetails.noMoodTrend }}</p>
+                <p class="message compact">{{ labels().patientDetails.noMoodTrend }}</p>
               } @else {
-                <svg class="trend-chart" viewBox="0 0 900 180" role="img" [attr.aria-label]="labels.patientDetails.moodTrend">
-                  <line class="trend-grid-line" x1="45" y1="30" x2="855" y2="30" />
-                  <line class="trend-grid-line" x1="45" y1="78" x2="855" y2="78" />
-                  <line class="trend-grid-line" x1="45" y1="126" x2="855" y2="126" />
-                  <line class="trend-axis-line" x1="45" y1="142" x2="855" y2="142" />
+                <svg
+                  class="trend-chart"
+                  viewBox="0 0 900 200"
+                  role="img"
+                  [attr.aria-label]="labels().patientDetails.moodTrend"
+                  [attr.dir]="currentDirection()"
+                >
+                  <line class="trend-grid-line" x1="28" y1="28" x2="872" y2="28" />
+                  <line class="trend-grid-line" x1="28" y1="83" x2="872" y2="83" />
+                  <line class="trend-grid-line" x1="28" y1="138" x2="872" y2="138" />
+                  <line class="trend-axis-line" x1="28" y1="158" x2="872" y2="158" />
                   <polyline class="trend-line" [attr.points]="moodTrendLine()" />
                   @for (point of moodTrendPoints(); track point.label + point.x) {
                     <g class="trend-point-group" tabindex="0" [attr.aria-label]="point.tooltip">
@@ -104,7 +108,7 @@ type TimelineItem =
                       <circle class="trend-point" [attr.cx]="point.x" [attr.cy]="point.y" r="5" />
                     </g>
                     @if (point.axisLabel) {
-                      <text class="trend-axis-label" [attr.x]="point.x" y="168" text-anchor="middle">{{ point.axisLabel }}</text>
+                      <text class="trend-axis-label" [attr.x]="point.x" y="188" text-anchor="middle">{{ point.axisLabel }}</text>
                     }
                   }
                 </svg>
@@ -115,7 +119,7 @@ type TimelineItem =
 
         <section class="attention-card" aria-labelledby="attention-summary">
           <div class="section-heading">
-            <h3 id="attention-summary">{{ labels.attention.title }}</h3>
+            <h3 id="attention-summary">{{ labels().attention.title }}</h3>
             <span
               class="status-pill"
               [class.is-high]="attentionSummary().level === 'high'"
@@ -126,7 +130,7 @@ type TimelineItem =
           </div>
 
           @if (attentionSummary().reasons.length === 0) {
-            <p class="message">{{ labels.attention.noReasons }}</p>
+            <p class="message">{{ labels().attention.noReasons }}</p>
           } @else {
             <ul>
               @for (reason of attentionSummary().reasons; track reason) {
@@ -141,14 +145,14 @@ type TimelineItem =
             <textarea
               name="therapistNote"
               rows="4"
-              [placeholder]="labels.patientDetails.notePlaceholder"
+              [placeholder]="labels().patientDetails.notePlaceholder"
               [disabled]="savingNote()"
               [ngModel]="noteText()"
               (ngModelChange)="noteText.set($event)"
             ></textarea>
 
             <button type="submit" [disabled]="saveDisabled()">
-              {{ savingNote() ? labels.patientDetails.savingNote : labels.patientDetails.saveNote }}
+              {{ savingNote() ? labels().patientDetails.savingNote : labels().patientDetails.saveNote }}
             </button>
           </form>
 
@@ -157,16 +161,16 @@ type TimelineItem =
           }
 
           <div class="timeline-heading">
-            <h3 id="patient-timeline">Patient Timeline</h3>
-            <p>Mood entries and therapist notes in chronological order.</p>
+            <h3 id="patient-timeline">{{ labels().patientDetails.timelineTitle }}</h3>
+            <p>{{ labels().patientDetails.timelineDescription }}</p>
           </div>
 
           @if (timelineLoading()) {
-            <p class="message">{{ labels.common.loading }}</p>
+            <p class="message">{{ labels().common.loading }}</p>
           } @else if (notesErrorMessage()) {
             <p class="message error" role="alert">{{ notesErrorMessage() }}</p>
           } @else if (timelineItems().length === 0) {
-            <p class="message">{{ labels.patientDetails.noMoodEntries }} {{ labels.patientDetails.noTherapistNotes }}</p>
+            <p class="message">{{ labels().patientDetails.noMoodEntries }} {{ labels().patientDetails.noTherapistNotes }}</p>
           } @else {
             <div class="timeline">
               @for (item of visibleTimelineItems(); track item.id) {
@@ -174,26 +178,26 @@ type TimelineItem =
                   <article class="timeline-card is-mood">
                     <div class="timeline-card-header">
                       <div class="timeline-title-group">
-                        <p class="timeline-type">Mood Check-in</p>
+                        <p class="timeline-type">{{ labels().patientDetails.moodCheckIn }}</p>
                         <time [attr.datetime]="formatDateTimeAttribute(item.date)">{{ formatDate(item.date) }}</time>
                       </div>
-                      <span class="mood-chip">{{ labels.patientDetails.moodLevel }}: {{ formatMood(item.entry.moodLevel) }}</span>
+                      <span class="mood-chip">{{ labels().patientDetails.moodLevel }}: {{ formatMood(item.entry.moodLevel) }}</span>
                     </div>
 
                     <dl class="entry-details">
                       <div>
-                        <dt>{{ labels.patientDetails.emotions }}</dt>
+                        <dt>{{ labels().patientDetails.emotions }}</dt>
                         <dd>{{ formatList(item.entry.emotions) }}</dd>
                       </div>
                       <div>
-                        <dt>{{ labels.patientDetails.influences }}</dt>
+                        <dt>{{ labels().patientDetails.influences }}</dt>
                         <dd>{{ formatList(item.entry.influences) }}</dd>
                       </div>
                     </dl>
 
                     @if (item.entry.journalNote) {
                       <p class="journal">
-                        <strong>{{ labels.patientDetails.journalNote }}</strong>
+                        <strong>{{ labels().patientDetails.journalNote }}</strong>
                         <span>{{ item.entry.journalNote }}</span>
                       </p>
                     }
@@ -202,7 +206,7 @@ type TimelineItem =
                   <article class="timeline-card is-note">
                     <div class="timeline-card-header">
                       <div class="timeline-title-group">
-                        <p class="timeline-type">Therapist Note</p>
+                        <p class="timeline-type">{{ labels().patientDetails.therapistNote }}</p>
                         <time [attr.datetime]="formatDateTimeAttribute(item.date)">{{ formatDate(item.date) }}</time>
                       </div>
                       @if (item.note.therapistName) {
@@ -216,7 +220,7 @@ type TimelineItem =
             </div>
 
             @if (canLoadMoreTimelineItems()) {
-              <button class="load-more" type="button" (click)="loadMoreTimelineItems()">{{ labels.common.loadMore }}</button>
+              <button class="load-more" type="button" (click)="loadMoreTimelineItems()">{{ labels().common.loadMore }}</button>
             }
           }
         </section>
@@ -349,6 +353,7 @@ type TimelineItem =
       gap: 8px;
       min-width: 0;
       padding: 10px 10px 8px;
+      text-align: start;
     }
 
     .trend-heading {
@@ -358,25 +363,25 @@ type TimelineItem =
       justify-content: space-between;
     }
 
+    .trend-heading > div {
+      min-width: 0;
+    }
+
     .trend-heading p {
       color: var(--muted);
       font-size: 0.78rem;
       margin-top: 2px;
     }
 
-    .trend-heading strong {
-      color: var(--accent-strong);
-      font-size: 1.2rem;
-      font-weight: 760;
-    }
-
     .trend-chart {
+      direction: inherit;
       display: block;
-      height: 180px;
+      height: 196px;
       justify-self: stretch;
       max-width: none;
       min-width: 0;
       overflow: visible;
+      unicode-bidi: isolate;
       width: 100%;
     }
 
@@ -423,21 +428,26 @@ type TimelineItem =
     }
 
     .trend-axis-label {
+      direction: inherit;
       fill: color-mix(in srgb, var(--muted) 88%, var(--text));
       font-size: 8.8px;
       font-weight: 650;
+      unicode-bidi: plaintext;
     }
 
     dt {
       font-size: 0.8rem;
       font-weight: 650;
       margin-bottom: 4px;
+      text-align: start;
     }
 
     dd {
       color: var(--text);
       font-weight: 650;
       overflow-wrap: anywhere;
+      text-align: start;
+      unicode-bidi: isolate;
     }
 
     .attention-card,
@@ -452,6 +462,7 @@ type TimelineItem =
       display: grid;
       gap: 4px;
       padding-top: 2px;
+      text-align: start;
     }
 
     .timeline-heading p {
@@ -506,6 +517,11 @@ type TimelineItem =
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .entry-details > div {
+      min-width: 0;
+      text-align: start;
+    }
+
     ul {
       color: var(--muted);
       margin: 0;
@@ -518,7 +534,13 @@ type TimelineItem =
 
     .journal {
       gap: 6px;
+      justify-items: start;
       line-height: 1.55;
+      text-align: start;
+    }
+
+    .journal span {
+      unicode-bidi: isolate;
     }
 
     .timeline-card {
@@ -532,6 +554,7 @@ type TimelineItem =
       gap: 16px;
       padding: 18px;
       position: relative;
+      text-align: start;
     }
 
     .timeline-card.is-mood {
@@ -543,7 +566,7 @@ type TimelineItem =
     }
 
     .timeline {
-      padding-left: 44px;
+      padding-inline-start: 44px;
       position: relative;
     }
 
@@ -551,7 +574,7 @@ type TimelineItem =
       background: color-mix(in srgb, var(--line) 78%, transparent);
       bottom: 24px;
       content: '';
-      left: 12px;
+      inset-inline-start: 12px;
       position: absolute;
       top: 24px;
       width: 1px;
@@ -562,7 +585,7 @@ type TimelineItem =
       border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
       content: '';
       height: 24px;
-      left: -44px;
+      inset-inline-start: -44px;
       position: absolute;
       top: 15px;
       width: 24px;
@@ -585,10 +608,10 @@ type TimelineItem =
     .timeline-card.is-mood::after {
       background: #14b8a6;
       clip-path: polygon(50% 90%, 13% 56%, 8% 34%, 21% 18%, 38% 18%, 50% 30%, 62% 18%, 79% 18%, 92% 34%, 87% 56%);
-      height: 11px;
-      left: -38px;
-      top: 21px;
-      width: 12px;
+      height: 13px;
+      inset-inline-start: calc(-44px + (24px - 14px) / 2);
+      top: calc(15px + (24px - 13px) / 2);
+      width: 14px;
     }
 
     .timeline-card.is-note::before {
@@ -599,26 +622,29 @@ type TimelineItem =
     }
 
     .timeline-card.is-note::after {
-      border: 1.5px solid #64748b;
+      border: 1.6px solid #64748b;
       border-radius: 2px;
       box-shadow: inset 0 4px 0 -3px color-mix(in srgb, #64748b 68%, transparent);
-      height: 11px;
-      left: -37px;
-      top: 21px;
-      width: 9px;
+      height: 13px;
+      inset-inline-start: calc(-44px + (24px - 11px) / 2);
+      top: calc(15px + (24px - 13px) / 2);
+      width: 11px;
     }
 
     .timeline-card-header {
-      align-items: flex-start;
+      align-items: start;
       display: flex;
       gap: 16px;
       justify-content: space-between;
+      text-align: start;
     }
 
     .timeline-title-group {
       display: grid;
       gap: 5px;
+      justify-items: start;
       min-width: 0;
+      text-align: start;
     }
 
     .timeline-type {
@@ -629,6 +655,7 @@ type TimelineItem =
       font-weight: 760;
       gap: 8px;
       letter-spacing: 0.05em;
+      text-align: start;
       text-transform: uppercase;
     }
 
@@ -636,11 +663,13 @@ type TimelineItem =
     .author-name {
       font-size: 0.9rem;
       font-weight: 650;
+      text-align: start;
+      unicode-bidi: isolate;
     }
 
     .author-name {
       overflow-wrap: anywhere;
-      text-align: right;
+      text-align: end;
     }
 
     .note-form {
@@ -660,6 +689,8 @@ type TimelineItem =
       min-height: 112px;
       padding: 12px 14px;
       resize: vertical;
+      text-align: start;
+      unicode-bidi: isolate;
     }
 
     button {
@@ -697,7 +728,31 @@ type TimelineItem =
     .note-text {
       color: var(--text);
       line-height: 1.55;
+      text-align: start;
+      unicode-bidi: isolate;
       white-space: pre-wrap;
+    }
+
+    :host-context([dir='rtl']) .timeline-card,
+    :host-context([dir='rtl']) .timeline-card-header,
+    :host-context([dir='rtl']) .timeline-title-group,
+    :host-context([dir='rtl']) .entry-details,
+    :host-context([dir='rtl']) .entry-details > div,
+    :host-context([dir='rtl']) .journal,
+    :host-context([dir='rtl']) .note-text {
+      text-align: start;
+    }
+
+    :host-context([dir='rtl']) .timeline-card time,
+    :host-context([dir='rtl']) .author-name,
+    :host-context([dir='rtl']) .mood-chip,
+    :host-context([dir='rtl']) .entry-details dt,
+    :host-context([dir='rtl']) .entry-details dd,
+    :host-context([dir='rtl']) .journal strong,
+    :host-context([dir='rtl']) .journal span {
+      direction: rtl;
+      text-align: start;
+      unicode-bidi: isolate;
     }
 
     .message {
@@ -728,16 +783,16 @@ type TimelineItem =
       }
 
       .timeline-card-header {
-        align-items: flex-start;
+        align-items: start;
         flex-direction: column;
       }
 
       .author-name {
-        text-align: left;
+        text-align: start;
       }
 
       .section-heading {
-        align-items: flex-start;
+        align-items: start;
         flex-direction: column;
       }
     }
@@ -752,16 +807,18 @@ type TimelineItem =
 })
 export class PatientDetailsPageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
   private readonly therapistNotesService = inject(TherapistNotesService);
   private readonly attentionService = inject(AttentionService);
+  private readonly layoutDirectionService = inject(LayoutDirectionService);
   private readonly visiblePageSize = 10;
   private readonly patientLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
   private readonly notesLoaded = signal(false);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly patientId = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly errorMessage = signal('');
   protected readonly notesErrorMessage = signal('');
@@ -769,12 +826,13 @@ export class PatientDetailsPageComponent {
   protected readonly noteText = signal('');
   protected readonly visibleTimelineItemCount = signal(this.visiblePageSize);
   protected readonly savingNote = signal(false);
+  protected readonly currentDirection = this.layoutDirectionService.direction;
   protected readonly patient = toSignal(
     this.usersService.getUser(this.patientId).pipe(
       tap(() => this.patientLoaded.set(true)),
       catchError(() => {
         this.patientLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<AppUser | null>(null);
       })
@@ -786,7 +844,7 @@ export class PatientDetailsPageComponent {
       tap(() => this.moodEntriesLoaded.set(true)),
       catchError(() => {
         this.moodEntriesLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<MoodEntry[]>([]);
       })
@@ -798,7 +856,7 @@ export class PatientDetailsPageComponent {
       tap(() => this.notesLoaded.set(true)),
       catchError(() => {
         this.notesLoaded.set(true);
-        this.notesErrorMessage.set(this.labels.common.firestoreError);
+        this.notesErrorMessage.set(this.labels().common.firestoreError);
 
         return of<TherapistNote[]>([]);
       })
@@ -835,10 +893,10 @@ export class PatientDetailsPageComponent {
       .slice(0, 10)
       .reverse();
     const chart = {
-      left: 45,
-      right: 855,
-      top: 30,
-      bottom: 126,
+      left: 28,
+      right: 872,
+      top: 28,
+      bottom: 138,
       minMood: 1,
       maxMood: 10
     };
@@ -849,18 +907,21 @@ export class PatientDetailsPageComponent {
 
     let lastVisibleAxisLabel = '';
 
-    return entries.map((entry, index) => {
+    const displayEntries = this.currentDirection() === 'rtl' ? [...entries].reverse() : entries;
+
+    return displayEntries.map((entry, index) => {
       const x =
-        entries.length === 1
+        displayEntries.length === 1
           ? (chart.left + chart.right) / 2
-          : chart.left + ((chart.right - chart.left) * index) / (entries.length - 1);
+          : chart.left + ((chart.right - chart.left) * index) / (displayEntries.length - 1);
       const moodLevel = entry.moodLevel ?? chart.minMood;
       const clampedMood = Math.min(chart.maxMood, Math.max(chart.minMood, moodLevel));
       const y =
         chart.bottom -
         ((clampedMood - chart.minMood) / (chart.maxMood - chart.minMood)) * (chart.bottom - chart.top);
       const axisLabel = this.formatShortDate(entry.createdAt);
-      const showAxisLabel = entries.length <= 5 || index === 0 || index === entries.length - 1 || index % 2 === 0;
+      const showAxisLabel =
+        displayEntries.length <= 5 || index === 0 || index === displayEntries.length - 1 || index % 2 === 0;
       const visibleAxisLabel = showAxisLabel && axisLabel !== lastVisibleAxisLabel ? axisLabel : '';
 
       if (visibleAxisLabel) {
@@ -888,7 +949,7 @@ export class PatientDetailsPageComponent {
   protected readonly patientName = computed(() => {
     const patient = this.patient();
 
-    return patient?.displayName ?? patient?.email ?? patient?.id ?? this.labels.patients.unknownPatient;
+    return patient?.displayName ?? patient?.email ?? patient?.id ?? this.labels().patients.unknownPatient;
   });
   protected readonly headerMetrics = computed<HeaderMetric[]>(() => {
     const patient = this.patient();
@@ -896,34 +957,34 @@ export class PatientDetailsPageComponent {
 
     return [
       {
-        label: this.labels.patientDetails.email,
-        value: patient?.email ?? this.labels.patientDetails.none
+        label: this.labels().patientDetails.email,
+        value: patient?.email ?? this.labels().patientDetails.none
       },
       {
-        label: this.labels.patientDetails.latestMood,
-        value: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels.patients.noMood
+        label: this.labels().patientDetails.latestMood,
+        value: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels().patients.noMood
       },
       {
-        label: this.labels.patientDetails.lastCheckIn,
-        value: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels.patients.noEntries
+        label: this.labels().patientDetails.lastCheckIn,
+        value: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels().patients.noEntries
       }
     ];
   });
 
   protected formatMood(moodLevel: MoodEntry['moodLevel']): string {
     if (moodLevel === undefined) {
-      return this.labels.patients.noMood;
+      return this.labels().patients.noMood;
     }
 
     return String(moodLevel);
   }
 
   protected formatList(items: string[]): string {
-    return items.length > 0 ? items.join(', ') : this.labels.patientDetails.none;
+    return items.length > 0 ? items.join(', ') : this.labels().patientDetails.none;
   }
 
   protected formatAttentionLevel(level: AttentionLevel): string {
-    return this.labels.attention[level];
+    return this.labels().attention[level];
   }
 
   protected loadMoreTimelineItems(): void {
@@ -934,7 +995,7 @@ export class PatientDetailsPageComponent {
     const date = this.toDate(value);
 
     if (!date || Number.isNaN(date.getTime())) {
-      return this.labels.patients.noEntries;
+      return this.labels().patients.noEntries;
     }
 
     return new Intl.DateTimeFormat(undefined, {
@@ -967,7 +1028,7 @@ export class PatientDetailsPageComponent {
 
     if (this.saveDisabled()) {
       if (!this.noteText().trim()) {
-        this.saveNoteErrorMessage.set(this.labels.patientDetails.emptyNoteError);
+        this.saveNoteErrorMessage.set(this.labels().patientDetails.emptyNoteError);
       }
 
       return;
@@ -979,7 +1040,7 @@ export class PatientDetailsPageComponent {
       await this.therapistNotesService.createNote(this.patientId, this.noteText());
       this.noteText.set('');
     } catch {
-      this.saveNoteErrorMessage.set(this.labels.patientDetails.saveNoteError);
+      this.saveNoteErrorMessage.set(this.labels().patientDetails.saveNoteError);
     } finally {
       this.savingNote.set(false);
     }

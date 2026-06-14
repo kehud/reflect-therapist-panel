@@ -1,17 +1,17 @@
 import { Component, computed, inject } from '@angular/core';
 
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { AuthService } from '../../core/services/firebase/auth.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
 
 @Component({
   selector: 'app-topbar',
   template: `
     <header class="topbar">
       <div>
-        <p>{{ labels.shell.workspace }}</p>
-        <h1>{{ labels.appName }}</h1>
+        <p>{{ labels().shell.workspace }}</p>
+        <h1>{{ labels().appName }}</h1>
       </div>
-      <div class="user-summary" aria-label="Signed in user">
+      <div class="user-summary" [attr.aria-label]="labels().shell.signedIn">
         <strong>{{ userLabel() }}</strong>
         <span aria-hidden="true">|</span>
         <span>{{ roleLabel() }}</span>
@@ -103,9 +103,10 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
   `
 })
 export class TopbarComponent {
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly authService = inject(AuthService);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly userLabel = computed(() => {
     const appUser = this.authService.currentAppUser();
     const firebaseUser = this.authService.currentFirebaseUser();
@@ -115,12 +116,12 @@ export class TopbarComponent {
       appUser?.email ??
       firebaseUser?.displayName ??
       firebaseUser?.email ??
-      this.labels.shell.signedIn
+      this.labels().shell.signedIn
     );
   });
   protected readonly roleLabel = computed(() => {
     const role = this.authService.currentAppUser()?.role;
 
-    return role ? this.labels.roles[role] : this.labels.shell.role;
+    return role ? this.labels().roles[role] : this.labels().shell.role;
   });
 }

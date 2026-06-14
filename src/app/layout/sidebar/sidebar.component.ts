@@ -1,24 +1,25 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { AuthService } from '../../core/services/firebase/auth.service';
-import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
+import { type AppNavItem } from '../../shared/utils/app-labels';
 
 @Component({
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],
   template: `
     <aside class="sidebar">
-      <a class="brand" routerLink="/dashboard" aria-label="Reflect dashboard">
+      <a class="brand" routerLink="/dashboard" [attr.aria-label]="labels().appName">
         <span class="brand-mark">R</span>
         <span class="brand-copy">
-          <strong>Reflect</strong>
-          <small>Therapist Panel</small>
+          <strong>{{ labels().brand.name }}</strong>
+          <small>{{ labels().brand.subtitle }}</small>
         </span>
       </a>
 
-      <nav class="nav" aria-label="Primary navigation">
-        @for (item of navItems; track item.route) {
+      <nav class="nav" [attr.aria-label]="labels().shell.primaryNavigation">
+        @for (item of navItems(); track item.route) {
           <a
             [routerLink]="item.route"
             routerLinkActive="is-active"
@@ -31,7 +32,7 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
 
       <div class="sidebar-actions">
         <button type="button" [disabled]="logoutDisabled()" (click)="logout()">
-          {{ labels.nav.logout }}
+          {{ labels().nav.logout }}
         </button>
 
         @if (logoutError()) {
@@ -46,6 +47,10 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
       background: var(--sidebar-bg);
       box-shadow: inset -1px 0 0 color-mix(in srgb, var(--line-strong) 42%, transparent);
       min-height: 100dvh;
+    }
+
+    :host-context([dir='rtl']) {
+      box-shadow: inset 1px 0 0 color-mix(in srgb, var(--line-strong) 42%, transparent);
     }
 
     .sidebar {
@@ -125,6 +130,10 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
       box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 88%, var(--line));
     }
 
+    :host-context([dir='rtl']) .nav a.is-active {
+      box-shadow: inset -3px 0 0 color-mix(in srgb, var(--accent) 88%, var(--line));
+    }
+
     .sidebar-actions {
       align-self: end;
       border-top: 1px solid var(--line);
@@ -186,11 +195,41 @@ import { APP_LABELS, APP_NAV_ITEMS } from '../../shared/utils/app-labels';
   `
 })
 export class SidebarComponent {
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly labels = APP_LABELS;
-  protected readonly navItems = APP_NAV_ITEMS;
+  protected readonly labels = this.appLanguageService.labels;
+  protected readonly navItems = computed<readonly AppNavItem[]>(() => {
+    const labels = this.labels();
+
+    return [
+      {
+        label: labels.nav.dashboard,
+        route: '/dashboard',
+        exact: true
+      },
+      {
+        label: labels.nav.patients,
+        route: '/patients'
+      },
+      {
+        label: labels.nav.notes,
+        route: '/notes',
+        exact: true
+      },
+      {
+        label: labels.nav.templates,
+        route: '/templates',
+        exact: true
+      },
+      {
+        label: labels.nav.settings,
+        route: '/settings',
+        exact: true
+      }
+    ];
+  });
   protected readonly loggingOut = signal(false);
   protected readonly logoutError = signal('');
   protected readonly logoutDisabled = computed(() => this.loggingOut() || this.authService.loading());
@@ -203,7 +242,7 @@ export class SidebarComponent {
       await this.authService.logout();
       await this.router.navigateByUrl('/login');
     } catch {
-      this.logoutError.set(this.labels.auth.logoutError);
+      this.logoutError.set(this.labels().auth.logoutError);
     } finally {
       this.loggingOut.set(false);
     }

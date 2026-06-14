@@ -1,15 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
-import { APP_LABELS } from '../../shared/utils/app-labels';
+import { AppLanguageService } from '../../core/services/app-language.service';
 
 @Component({
   selector: 'app-notes-page',
   template: `
     <section class="page">
-      <h2>{{ labels.pages.notesTitle }}</h2>
+      <h2>{{ labels().pages.notesTitle }}</h2>
       <div class="empty-state">
-        <h3>No notes yet</h3>
-        <p>The therapistNotes collection will be added after Firebase wiring.</p>
+        <h3>{{ labels().notes.noNotesYet }}</h3>
+        <p>{{ labels().notes.setupDescription }}</p>
       </div>
     </section>
   `,
@@ -55,5 +55,7 @@ import { APP_LABELS } from '../../shared/utils/app-labels';
   `
 })
 export class NotesPageComponent {
-  protected readonly labels = APP_LABELS;
+  private readonly appLanguageService = inject(AppLanguageService);
+
+  protected readonly labels = this.appLanguageService.labels;
 }

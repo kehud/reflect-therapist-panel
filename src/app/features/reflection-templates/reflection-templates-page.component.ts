@@ -4,8 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { catchError, of, tap } from 'rxjs';
 
 import { ReflectionTemplate } from '../../core/models/reflection-template.model';
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { ReflectionTemplatesService } from '../../core/services/firebase/reflection-templates.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
 
 type TemplateView = {
   id: string;
@@ -21,8 +21,8 @@ type TemplateView = {
   template: `
     <section class="page">
       <div class="heading">
-        <h2>{{ labels.pages.templatesTitle }}</h2>
-        <p>{{ labels.templates.subtitle }}</p>
+        <h2>{{ labels().pages.templatesTitle }}</h2>
+        <p>{{ labels().templates.subtitle }}</p>
       </div>
 
       @if (errorMessage()) {
@@ -30,26 +30,26 @@ type TemplateView = {
       }
 
       @if (loading()) {
-        <p class="message">{{ labels.common.loading }}</p>
+        <p class="message">{{ labels().common.loading }}</p>
       }
 
-      <div class="summary" aria-label="Template summary">
+      <div class="summary" [attr.aria-label]="labels().pages.templatesTitle">
         <article class="summary-card">
-          <span>{{ labels.templates.totalTemplates }}</span>
+          <span>{{ labels().templates.totalTemplates }}</span>
           <strong>{{ templates().length }}</strong>
         </article>
         <article class="summary-card">
-          <span>{{ labels.templates.activeTemplates }}</span>
+          <span>{{ labels().templates.activeTemplates }}</span>
           <strong>{{ templates().length }}</strong>
         </article>
       </div>
 
       <label class="search">
-        {{ labels.templates.search }}
+        {{ labels().templates.search }}
         <input
           type="search"
           name="templateSearch"
-          [placeholder]="labels.templates.searchPlaceholder"
+          [placeholder]="labels().templates.searchPlaceholder"
           [ngModel]="searchText()"
           (ngModelChange)="searchText.set($event)"
         />
@@ -57,9 +57,9 @@ type TemplateView = {
 
       @if (!loading()) {
         @if (templates().length === 0) {
-          <p class="message">{{ labels.templates.noTemplates }}</p>
+          <p class="message">{{ labels().templates.noTemplates }}</p>
         } @else if (filteredTemplates().length === 0) {
-          <p class="message">{{ labels.templates.noSearchResults }}</p>
+          <p class="message">{{ labels().templates.noSearchResults }}</p>
         } @else {
           <div class="templates">
             @for (template of filteredTemplates(); track template.id) {
@@ -71,11 +71,11 @@ type TemplateView = {
                 <p>{{ template.body }}</p>
                 <dl>
                   <div>
-                    <dt>{{ labels.templates.type }}</dt>
+                    <dt>{{ labels().templates.type }}</dt>
                     <dd>{{ template.type }}</dd>
                   </div>
                   <div>
-                    <dt>{{ labels.templates.minCheckins }}</dt>
+                    <dt>{{ labels().templates.minCheckins }}</dt>
                     <dd>{{ template.minCheckins }}</dd>
                   </div>
                 </dl>
@@ -173,6 +173,8 @@ type TemplateView = {
       gap: 8px;
       font-size: 0.875rem;
       font-weight: 650;
+      justify-self: start;
+      max-width: 100%;
       padding: 14px;
       width: calc((100% - 32px) / 3);
     }
@@ -282,10 +284,11 @@ type TemplateView = {
   `
 })
 export class ReflectionTemplatesPageComponent {
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly reflectionTemplatesService = inject(ReflectionTemplatesService);
   private readonly templatesLoaded = signal(false);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly searchText = signal('');
   protected readonly errorMessage = signal('');
   protected readonly templates = toSignal(
@@ -293,7 +296,7 @@ export class ReflectionTemplatesPageComponent {
       tap(() => this.templatesLoaded.set(true)),
       catchError(() => {
         this.templatesLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<ReflectionTemplate[]>([]);
       })
@@ -321,10 +324,10 @@ export class ReflectionTemplatesPageComponent {
 
     return {
       id: template.id,
-      title: english?.title ?? template.label ?? this.labels.templates.untitled,
-      body: english?.body ?? this.labels.templates.noBody,
-      type: template.type ?? this.labels.patientDetails.none,
-      minCheckins: template.minCheckins === undefined ? this.labels.patientDetails.none : String(template.minCheckins)
+      title: english?.title ?? template.label ?? this.labels().templates.untitled,
+      body: english?.body ?? this.labels().templates.noBody,
+      type: template.type ?? this.labels().patientDetails.none,
+      minCheckins: template.minCheckins === undefined ? this.labels().patientDetails.none : String(template.minCheckins)
     };
   }
 }

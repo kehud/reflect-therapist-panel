@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import { MoodEntry } from '../models/mood-entry.model';
+import { AppLanguageService } from './app-language.service';
 
 export type AttentionLevel = 'none' | 'medium' | 'high';
 
@@ -14,20 +15,23 @@ export type PatientAttention = {
   providedIn: 'root'
 })
 export class AttentionService {
+  private readonly appLanguageService = inject(AppLanguageService);
+
   calculatePatientAttention(entries: readonly MoodEntry[]): PatientAttention {
     const sortedEntries = [...entries].sort((first, second) => this.toMillis(second.createdAt) - this.toMillis(first.createdAt));
     const latestEntry = sortedEntries[0];
+    const labels = this.appLanguageService.labels().attention;
     const reasons: string[] = [];
 
     if (latestEntry?.moodLevel === 1) {
-      reasons.push('Latest mood is 1.');
+      reasons.push(labels.latestMoodOne);
     }
 
     if (
       sortedEntries.length >= 2 &&
       sortedEntries.slice(0, 2).every((entry) => typeof entry.moodLevel === 'number' && entry.moodLevel <= 2)
     ) {
-      reasons.push('Last 2 check-ins are mood 2 or lower.');
+      reasons.push(labels.lastTwoLow);
     }
 
     if (reasons.length > 0) {
@@ -42,7 +46,7 @@ export class AttentionService {
       return {
         needsAttention: false,
         level: 'none',
-        reasons: ['No check-ins yet']
+        reasons: [labels.noCheckIns]
       };
     }
 
@@ -52,7 +56,7 @@ export class AttentionService {
       return {
         needsAttention: true,
         level: 'medium',
-        reasons: ['No check-in for 7+ days.']
+        reasons: [labels.staleCheckIn]
       };
     }
 

@@ -48,6 +48,13 @@ import { TopbarComponent } from '../topbar/topbar.component';
       width: 100%;
     }
 
+    :host-context([dir='rtl']) .shell {
+      background:
+        radial-gradient(circle at top right, var(--glow-accent) 0 230px, transparent 390px),
+        radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--glow-accent) 58%, transparent) 0 180px, transparent 340px),
+        var(--app-bg-gradient);
+    }
+
     @media (max-width: 900px) {
       .shell {
         grid-template-columns: 1fr;

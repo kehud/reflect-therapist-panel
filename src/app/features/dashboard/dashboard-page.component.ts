@@ -5,10 +5,10 @@ import { catchError, of, tap } from 'rxjs';
 
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { UsersService } from '../../core/services/firebase/users.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
 
 type DashboardMetric = {
   label: string;
@@ -38,8 +38,8 @@ type AttentionPatient = {
   template: `
     <section class="page">
       <div class="heading">
-        <p>{{ labels.dashboard.overview }}</p>
-        <h2>{{ labels.pages.dashboardTitle }}</h2>
+        <p>{{ labels().dashboard.overview }}</p>
+        <h2>{{ labels().pages.dashboardTitle }}</h2>
       </div>
 
       @if (errorMessage()) {
@@ -47,10 +47,10 @@ type AttentionPatient = {
       }
 
       @if (loading()) {
-        <p class="message">{{ labels.common.loading }}</p>
+        <p class="message">{{ labels().common.loading }}</p>
       }
 
-      <div class="metrics" aria-label="Dashboard metrics">
+      <div class="metrics" [attr.aria-label]="labels().dashboard.overview">
         @for (metric of metrics(); track metric.label) {
           <article class="metric-card">
             <span>{{ metric.label }}</span>
@@ -63,13 +63,13 @@ type AttentionPatient = {
       <div class="dashboard-grid">
         <section class="recent" aria-labelledby="attention-list">
           <div class="section-heading">
-            <h3 id="attention-list">{{ labels.dashboard.attentionList }}</h3>
-            <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
+            <h3 id="attention-list">{{ labels().dashboard.attentionList }}</h3>
+            <a routerLink="/patients">{{ labels().dashboard.viewPatients }}</a>
           </div>
 
           @if (!loading()) {
             @if (attentionList().length === 0) {
-              <p class="attention-empty" role="status">✓ No patients currently require attention.</p>
+              <p class="attention-empty" role="status">✓ {{ labels().dashboard.noAttention }}</p>
             } @else {
               <div class="recent-list">
                 @for (item of attentionList(); track item.patientId) {
@@ -90,13 +90,13 @@ type AttentionPatient = {
 
         <section class="recent" aria-labelledby="recent-mood-entries">
           <div class="section-heading">
-            <h3 id="recent-mood-entries">{{ labels.dashboard.recentMoodEntries }}</h3>
-            <a routerLink="/patients">{{ labels.dashboard.viewPatients }}</a>
+            <h3 id="recent-mood-entries">{{ labels().dashboard.recentMoodEntries }}</h3>
+            <a routerLink="/patients">{{ labels().dashboard.viewPatients }}</a>
           </div>
 
           @if (!loading()) {
             @if (recentEntries().length === 0) {
-              <p class="message">{{ labels.dashboard.noMoodEntries }}</p>
+              <p class="message">{{ labels().dashboard.noMoodEntries }}</p>
             } @else {
               <div class="recent-list">
                 @for (entry of recentEntries(); track entry.id) {
@@ -252,6 +252,7 @@ type AttentionPatient = {
     .recent-row {
       min-height: 68px;
       padding: 15px 18px;
+      text-align: start;
     }
 
     .recent-row + .recent-row {
@@ -339,20 +340,21 @@ type AttentionPatient = {
   `
 })
 export class DashboardPageComponent {
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
   private readonly attentionService = inject(AttentionService);
   private readonly patientsLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly errorMessage = signal('');
   protected readonly patients = toSignal(
     this.usersService.listPatients().pipe(
       tap(() => this.patientsLoaded.set(true)),
       catchError(() => {
         this.patientsLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<AppUser[]>([]);
       })
@@ -364,7 +366,7 @@ export class DashboardPageComponent {
       tap(() => this.moodEntriesLoaded.set(true)),
       catchError(() => {
         this.moodEntriesLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<MoodEntry[]>([]);
       })
@@ -384,26 +386,26 @@ export class DashboardPageComponent {
 
     return [
       {
-        label: this.labels.dashboard.totalPatients,
+        label: this.labels().dashboard.totalPatients,
         value: String(patients.length),
-        description: this.labels.dashboard.patientsDescription
+        description: this.labels().dashboard.patientsDescription
       },
       {
-        label: this.labels.dashboard.moodEntries,
+        label: this.labels().dashboard.moodEntries,
         value: String(entries.length),
-        description: this.labels.dashboard.recentMoodEntries
+        description: this.labels().dashboard.recentMoodEntries
       },
       {
-        label: this.labels.dashboard.needsAttention,
+        label: this.labels().dashboard.needsAttention,
         value: String(this.attentionList().length),
-        description: this.labels.dashboard.attentionDescription
+        description: this.labels().dashboard.attentionDescription
       },
       {
-        label: this.labels.dashboard.latestMood,
-        value: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels.dashboard.noLatestMood,
+        label: this.labels().dashboard.latestMood,
+        value: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels().dashboard.noLatestMood,
         description: latestEntry
-          ? `${this.labels.dashboard.lastRecorded}: ${this.formatDate(latestEntry.createdAt)}`
-          : this.labels.dashboard.noMoodEntries
+          ? `${this.labels().dashboard.lastRecorded}: ${this.formatDate(latestEntry.createdAt)}`
+          : this.labels().dashboard.noMoodEntries
       }
     ];
   });
@@ -452,19 +454,19 @@ export class DashboardPageComponent {
   });
 
   private getPatientName(patient: AppUser | undefined): string {
-    return patient?.displayName ?? patient?.email ?? patient?.id ?? this.labels.patients.unknownPatient;
+    return patient?.displayName ?? patient?.email ?? patient?.id ?? this.labels().patients.unknownPatient;
   }
 
   private formatMood(moodLevel: MoodEntry['moodLevel']): string {
     if (moodLevel === undefined) {
-      return this.labels.patients.noMood;
+      return this.labels().patients.noMood;
     }
 
     return String(moodLevel);
   }
 
   protected formatAttentionLevel(level: AttentionLevel): string {
-    return this.labels.attention[level];
+    return this.labels().attention[level];
   }
 
   private getEntriesByUser(entries: MoodEntry[]): Map<string, MoodEntry[]> {
@@ -484,7 +486,7 @@ export class DashboardPageComponent {
     const date = this.toDate(value);
 
     if (!date) {
-      return this.labels.patients.noEntries;
+      return this.labels().patients.noEntries;
     }
 
     return new Intl.DateTimeFormat(undefined, {

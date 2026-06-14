@@ -5,10 +5,10 @@ import { catchError, of, tap } from 'rxjs';
 
 import { AppUser } from '../../core/models/app-user.model';
 import { MoodEntry } from '../../core/models/mood-entry.model';
+import { AppLanguageService } from '../../core/services/app-language.service';
 import { AttentionLevel, AttentionService } from '../../core/services/attention.service';
 import { MoodEntriesService } from '../../core/services/firebase/mood-entries.service';
 import { UsersService } from '../../core/services/firebase/users.service';
-import { APP_LABELS } from '../../shared/utils/app-labels';
 
 type PatientRow = {
   id: string;
@@ -27,8 +27,8 @@ type PatientRow = {
   template: `
     <section class="page">
       <div class="heading">
-        <h2>{{ labels.pages.patientsTitle }}</h2>
-        <p>{{ labels.patients.subtitle }}</p>
+        <h2>{{ labels().pages.patientsTitle }}</h2>
+        <p>{{ labels().patients.subtitle }}</p>
       </div>
 
       @if (errorMessage()) {
@@ -36,17 +36,17 @@ type PatientRow = {
       }
 
       @if (loading()) {
-        <p class="message">{{ labels.common.loading }}</p>
+        <p class="message">{{ labels().common.loading }}</p>
       } @else if (rows().length === 0) {
-        <p class="message">{{ labels.patients.noPatients }}</p>
+        <p class="message">{{ labels().patients.noPatients }}</p>
       } @else {
-        <div class="table" role="table" aria-label="Patients">
+        <div class="table" role="table" [attr.aria-label]="labels().pages.patientsTitle">
           <div class="row header" role="row">
-            <span role="columnheader">{{ labels.patients.patient }}</span>
-            <span role="columnheader">{{ labels.patients.latestMood }}</span>
-            <span role="columnheader">{{ labels.patients.lastEntry }}</span>
-            <span role="columnheader">{{ labels.patients.entries }}</span>
-            <span role="columnheader">{{ labels.patients.status }}</span>
+            <span role="columnheader">{{ labels().patients.patient }}</span>
+            <span role="columnheader">{{ labels().patients.latestMood }}</span>
+            <span role="columnheader">{{ labels().patients.lastEntry }}</span>
+            <span role="columnheader">{{ labels().patients.entries }}</span>
+            <span role="columnheader">{{ labels().patients.status }}</span>
           </div>
 
           @for (row of rows(); track row.id) {
@@ -55,15 +55,15 @@ type PatientRow = {
                 <strong>{{ row.name }}</strong>
                 <small>{{ row.email }}</small>
               </span>
-              <span role="cell" [attr.data-label]="labels.patients.latestMood">{{ row.latestMood }}</span>
-              <span role="cell" [attr.data-label]="labels.patients.lastEntry">{{ row.lastEntry }}</span>
-              <span role="cell" [attr.data-label]="labels.patients.entries">{{ row.entryCount }}</span>
+              <span role="cell" [attr.data-label]="labels().patients.latestMood">{{ row.latestMood }}</span>
+              <span role="cell" [attr.data-label]="labels().patients.lastEntry">{{ row.lastEntry }}</span>
+              <span role="cell" [attr.data-label]="labels().patients.entries">{{ row.entryCount }}</span>
               <span
                 class="status-pill"
                 [class.is-high]="row.statusLevel === 'high'"
                 [class.is-medium]="row.statusLevel === 'medium'"
                 role="cell"
-                [attr.data-label]="labels.patients.status"
+                [attr.data-label]="labels().patients.status"
               >
                 {{ row.status }}
               </span>
@@ -111,17 +111,21 @@ type PatientRow = {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
+      direction: inherit;
       box-shadow: var(--shadow-card);
       overflow: hidden;
+      text-align: start;
     }
 
     .row {
       align-items: center;
+      direction: inherit;
       display: grid;
       gap: 16px;
       grid-template-columns: minmax(240px, 1.55fr) 0.7fr 1fr 0.45fr 0.75fr;
       min-height: 64px;
       padding: 13px 18px;
+      text-align: start;
     }
 
     .row + .row {
@@ -137,6 +141,11 @@ type PatientRow = {
       min-height: 44px;
       padding-block: 11px;
       text-transform: uppercase;
+    }
+
+    .row > * {
+      min-width: 0;
+      text-align: start;
     }
 
     a.row:hover {
@@ -163,9 +172,16 @@ type PatientRow = {
       white-space: nowrap;
     }
 
+    .patient strong,
+    .patient small,
+    [role='cell']:not(.patient) {
+      unicode-bidi: isolate;
+    }
+
     [role='cell']:not(.patient) {
       color: var(--muted-strong);
       font-size: 0.92rem;
+      font-variant-numeric: tabular-nums;
     }
 
     .status-pill {
@@ -177,7 +193,22 @@ type PatientRow = {
       font-size: 0.78rem;
       font-weight: 750;
       padding: 6px 10px;
+      text-align: center;
       white-space: nowrap;
+    }
+
+    :host-context([dir='rtl']) .table,
+    :host-context([dir='rtl']) .row {
+      direction: rtl;
+    }
+
+    :host-context([dir='rtl']) .row > * {
+      text-align: start;
+    }
+
+    :host-context([dir='rtl']) .patient small {
+      direction: ltr;
+      text-align: end;
     }
 
     .status-pill.is-high {
@@ -222,6 +253,7 @@ type PatientRow = {
       [role='cell']:not(.patient) {
         align-items: center;
         display: flex;
+        gap: 16px;
         justify-content: space-between;
       }
 
@@ -241,20 +273,21 @@ type PatientRow = {
   `
 })
 export class PatientListPageComponent {
+  private readonly appLanguageService = inject(AppLanguageService);
   private readonly usersService = inject(UsersService);
   private readonly moodEntriesService = inject(MoodEntriesService);
   private readonly attentionService = inject(AttentionService);
   private readonly patientsLoaded = signal(false);
   private readonly moodEntriesLoaded = signal(false);
 
-  protected readonly labels = APP_LABELS;
+  protected readonly labels = this.appLanguageService.labels;
   protected readonly errorMessage = signal('');
   protected readonly patients = toSignal(
     this.usersService.listPatients().pipe(
       tap(() => this.patientsLoaded.set(true)),
       catchError(() => {
         this.patientsLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<AppUser[]>([]);
       })
@@ -266,7 +299,7 @@ export class PatientListPageComponent {
       tap(() => this.moodEntriesLoaded.set(true)),
       catchError(() => {
         this.moodEntriesLoaded.set(true);
-        this.errorMessage.set(this.labels.common.firestoreError);
+        this.errorMessage.set(this.labels().common.firestoreError);
 
         return of<MoodEntry[]>([]);
       })
@@ -286,8 +319,8 @@ export class PatientListPageComponent {
         id: patient.id,
         name: this.getPatientName(patient),
         email: patient.email ?? patient.id,
-        latestMood: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels.patients.noMood,
-        lastEntry: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels.patients.noEntries,
+        latestMood: latestEntry ? this.formatMood(latestEntry.moodLevel) : this.labels().patients.noMood,
+        lastEntry: latestEntry ? this.formatDate(latestEntry.createdAt) : this.labels().patients.noEntries,
         entryCount: String(entries.length),
         status: this.formatAttentionLevel(attention.level),
         statusLevel: attention.level
@@ -314,21 +347,21 @@ export class PatientListPageComponent {
 
   private formatMood(moodLevel: MoodEntry['moodLevel']): string {
     if (moodLevel === undefined) {
-      return this.labels.patients.noMood;
+      return this.labels().patients.noMood;
     }
 
     return String(moodLevel);
   }
 
   private formatAttentionLevel(level: AttentionLevel): string {
-    return this.labels.attention[level];
+    return this.labels().attention[level];
   }
 
   private formatDate(value: unknown): string {
     const date = this.toDate(value);
 
     if (!date) {
-      return this.labels.patients.noEntries;
+      return this.labels().patients.noEntries;
     }
 
     return new Intl.DateTimeFormat(undefined, {
